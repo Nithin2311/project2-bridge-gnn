@@ -1,0 +1,39 @@
+# Project 2 — every parameter in one place, each with its reason. Change here, never in code.
+# Spec: docs/superpowers/specs/2026-11-06-project2-design.md
+
+paths:
+  p1_repo: ../project1-bridge-dx          # frozen Project 1 pipeline; imported as a path dependency (bridgedx)
+  p1_outputs: ../project1-bridge-dx/outputs   # read-only inputs: labels, split, nodes, bridges, node features, graphs
+  outputs: outputs
+  data_env: EHRSHOT_DATA                  # folder with the 13 EHRShot CSVs; falls back to data_default
+  data_default: ../FinalProject/data
+
+task:
+  definition: core          # stable-core target definition is PRIMARY (P1 decision 2026-10-16); community/chapter = sensitivity
+  horizon_months: 12        # EHRShot convention; 6-month horizon only as an appendix
+  exclude_censored: true    # death or record end inside the horizon -> row dropped, never a negative (Li 2020)
+  primary_targets: [cardiometabolic, cancer_hematologic, mental_health]   # >= 150 positives each
+  secondary_targets: [cancer_metastatic]                                  # 117 positives: reported, flagged underpowered, never tuned on
+
+windows:
+  lookback_days: [365, 1095, 0]   # 0 = all ICD-10-era history; three windows for experiment B6
+  primary_lookback: 1095          # 365 leaves 20% of rows with < 3 codes (P1 step 10 probe)
+  era_start: "2015-10-01"         # ICD-10 switch; no condition row before this date is used
+  recent_days: 90                 # "recorded recently" flag for TEMP features
+  visit_window_days: 365          # utilisation covariate: distinct visit days in the prior year
+
+masking:
+  input_exclusion: [core, chapter_block]   # rubric: exclude target and near-synonym codes from inputs; eligibility stays core-only
+
+split:
+  dev: [train, val]     # canonical EHRShot train + val = development set (2,787 patients); the graph was built on these
+  test: [test]          # canonical test (1,344 patients): never in any statistic, scaler, or selection; touched once
+  cv_folds: 5           # GroupKFold by patient inside the development set; refit on all dev rows; then test once
+  group_by: person_id
+
+seeds: [0, 1, 2, 3, 4]  # every stochastic call; mean and SD over these; rubric asks >= 3
+
+bridge:
+  survivor_flag: bridge_survivor   # column in P1 outputs/p2/node_features.csv (13 codes)
+  score_source: bridges.csv        # P1 per-pair cluster-restricted betweenness, all 496 nodes x 6 pairs
+  score_column: bridge_betweenness

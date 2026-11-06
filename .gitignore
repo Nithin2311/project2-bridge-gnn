@@ -1,0 +1,40 @@
+# data: never
+data/
+ehrshot/
+*.csv
+*.csv.gz
+*.parquet
+*.duckdb
+*.zip
+.cache/
+outputs/*
+!outputs/.gitkeep
+!outputs/artifacts/
+outputs/artifacts/*.parquet
+checkpoints/
+logs/*.log
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# notebooks checkpoints
+.ipynb_checkpoints/
+
+# plan-execution scratch
+.superpowers/
+
+# os / editor
+.DS_Store
+.vscode/
+.idea/
+
+# browser partial downloads and EHRSHOT assets: never
+*.crdownload
+*.part
+EHRSHOT_ASSETS*
+Unconfirmed*
