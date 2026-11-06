@@ -1,0 +1,58 @@
+# Experiment grid. IDs and families from the design, section 8. The driver (scripts/07_experiments.py) turns each
+# entry into one CLI call per target (see docs/INTERFACES.md). `targets: primary` expands from config/p2.yaml.
+# Defaults when a flag is not overridden: arch = the best main-comparison architecture (set `default_arch` once
+# the G-* runs are in), layer U, all six feature groups, lookback 1095, weighted 1, depth 2, agg mean, heads 4,
+# hidden 64, subsample 1.0, null-graph none, drop-codes none.
+
+default_arch: sage
+
+experiments:
+  # ---- main comparison (family gnn) ----
+  - {id: G-gcn,  family: gnn, base: gnn, targets: primary, overrides: {arch: gcn},  note: "GCN, full features, layer U"}
+  - {id: G-sage, family: gnn, base: gnn, targets: primary, overrides: {arch: sage}, note: "GraphSAGE mean"}
+  - {id: G-gat,  family: gnn, base: gnn, targets: primary, overrides: {arch: gat},  note: "GAT 4 heads"}
+
+  # ---- A: node features ----
+  - {id: A1a, family: A, base: gnn, targets: primary, overrides: {features: "CODE,DEMO,UTIL,TEMP,STRUCT"}, note: "no BRIDGE features"}
+  - {id: A1b, family: A, base: gnn, targets: primary, overrides: {features: "CODE,DEMO,UTIL,TEMP,STRUCT", drop-codes: bridge}, note: "no BRIDGE features and bridge codes removed from input"}
+  - {id: A2a, family: A, base: gnn, targets: primary, overrides: {features: "CODE"}, note: "code identity only"}
+  - {id: A2b, family: A, base: gnn, targets: primary, overrides: {features: "CODE,DEMO,UTIL"}, note: "codes + demographics + utilisation"}
+  - {id: A3,  family: A, base: gnn, targets: primary, overrides: {features: "CODE,DEMO,UTIL,TEMP,BRIDGE"}, note: "without P1 structural measures"}
+  - {id: A4,  family: A, base: gnn, targets: primary, overrides: {features: "CODE,DEMO,UTIL,STRUCT,BRIDGE"}, note: "without temporal features"}
+
+  # ---- B: graph structure ----
+  - {id: B1,  family: B, base: gnn, targets: primary, overrides: {layer: D}, note: "directed precedence edges"}
+  # B2 (bipartite HeteroGNN) runs through scripts/06b_hetero.py, not the driver
+  - {id: B3,  family: B, base: gnn, targets: primary, overrides: {weighted: 0}, note: "unweighted edges"}
+  - {id: B4a, family: B, base: gnn, targets: primary, overrides: {layer: U-bh}, note: "BH-FDR edge filter instead of Bonferroni"}
+  - {id: B4b, family: B, base: gnn, targets: primary, overrides: {layer: U-bb}, note: "top-10 per-node backbone"}
+  # B5 (pre-2020 rebuilt graph) runs through scripts/09_pre2020_graph.py
+  - {id: B6a, family: B, base: gnn, targets: primary, overrides: {lookback: 365},  note: "1-year lookback"}
+  - {id: B6b, family: B, base: gnn, targets: primary, overrides: {lookback: 0},    note: "all-history lookback"}
+  - {id: B6c, family: B, base: gnn, targets: primary, overrides: {expand: 1},      note: "1-hop neighbour expansion"}
+
+  # ---- C: scale (subgroup results come from step 08 on every run's predictions) ----
+  - {id: C1-25, family: C, base: gnn, targets: primary, overrides: {subsample: 0.25}, note: "25% of development patients"}
+  - {id: C1-50, family: C, base: gnn, targets: primary, overrides: {subsample: 0.50}, note: "50% of development patients"}
+  - {id: C1-25-hgb, family: C, base: baseline, targets: primary, overrides: {model: hgb, subsample: 0.25}, note: "baseline learning curve"}
+  - {id: C1-50-hgb, family: C, base: baseline, targets: primary, overrides: {model: hgb, subsample: 0.50}, note: "baseline learning curve"}
+
+  # ---- D: null models ----
+  - {id: D1-rewire0, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire0}, note: "degree-preserving rewired edges"}
+  - {id: D1-rewire1, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire1}}
+  - {id: D1-rewire2, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire2}}
+  - {id: D1-rewire3, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire3}}
+  - {id: D1-rewire4, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire4}}
+  - {id: D1-shuffle, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: shuffle}, note: "edge-shuffled graph"}
+
+  # ---- E: model ----
+  - {id: E1-gcn3,  family: E, base: gnn, targets: primary, overrides: {arch: gcn,  depth: 3}}
+  - {id: E1-sage3, family: E, base: gnn, targets: primary, overrides: {arch: sage, depth: 3}}
+  - {id: E1-gat3,  family: E, base: gnn, targets: primary, overrides: {arch: gat,  depth: 3}}
+  - {id: E2-sagemax, family: E, base: gnn, targets: primary, overrides: {arch: sage, agg: max}}
+  - {id: E2-gat2,  family: E, base: gnn, targets: primary, overrides: {arch: gat, heads: 2}}
+  - {id: E2-gat8,  family: E, base: gnn, targets: primary, overrides: {arch: gat, heads: 8}}
+  - {id: E3-h32,   family: E, base: gnn, targets: primary, overrides: {hidden: 32}}
+  - {id: E3-h128,  family: E, base: gnn, targets: primary, overrides: {hidden: 128}}
+
+# Priority if time runs short (design section 8): A1a, A1b, B1, D1-*, E1-*, C1-*, B3, A2*, A3, A4, B4*, B6*, E2*, E3*
