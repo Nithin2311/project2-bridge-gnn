@@ -9,8 +9,9 @@ import os
 from pathlib import Path
 
 import duckdb
+import polars as pl
 
-from bridgedx.cohort import _register_category_map
+from bridgedx.cohort import icd10_3char
 from bridgedx.data import TABLES
 
 from . import config
@@ -44,5 +45,12 @@ def connect(cfg: dict | None = None) -> duckdb.DuckDBPyConnection:
 
 
 def register_category_map(con: duckdb.DuckDBPyConnection) -> None:
-    """Temp table cat_map(sv, category): Project 1's ICD-10 source-value to 3-char category map."""
-    _register_category_map(con)
+    """Temp table cat_map(sv, category): Project 1's ICD-10 source-value to 3-char category map.
+
+    Same mapping function as Project 1 (bridgedx.cohort.icd10_3char), re-run here because P1's helper uses
+    connection.pl(), removed in duckdb 2.0."""
+    vals = con.sql("select distinct condition_source_value as sv from condition_occurrence "
+                   "where condition_source_value is not null").pl()
+    mapped = vals.with_columns(pl.col("sv").map_elements(icd10_3char, return_dtype=pl.Utf8).alias("category")).drop_nulls("category")
+    con.register("_cat_map_df", mapped.to_arrow())
+    con.execute("create or replace temp table cat_map as select * from _cat_map_df")

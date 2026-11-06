@@ -22,3 +22,14 @@ def test_connect_refreshes_stale_view(tmp_path):
     db.connect({"paths": {"data_env": "X_UNSET", "data_default": str(data1), "cache": cache}}).close()
     con = db.connect({"paths": {"data_env": "X_UNSET", "data_default": str(data2), "cache": cache}})
     assert con.execute("select count(*) from person").fetchone()[0] == 3
+
+
+def test_register_category_map_builds_cat_map():
+    import duckdb
+    con = duckdb.connect()
+    con.execute("create table condition_occurrence(person_id bigint, condition_source_value varchar, condition_start_DATE date)")
+    con.execute("insert into condition_occurrence values (1,'I10.9',date '2016-01-01'), (1,'E11.65',date '2016-01-01'), (1,NULL,date '2016-01-01'), (2,'I10.9',date '2017-01-01')")
+    db.register_category_map(con)
+    rows = sorted(con.sql("select sv, category from cat_map").fetchall())
+    assert ("I10.9", "I10") in rows and ("E11.65", "E11") in rows
+    assert len(rows) == 2
