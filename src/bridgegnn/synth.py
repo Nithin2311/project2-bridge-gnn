@@ -83,7 +83,7 @@ def make(seed: int = 0, n_patients: int = 60, n_categories: int = 30) -> SynthDa
             for d in dates:
                 if d <= end:
                     code_rows.append((pid, c, d))
-        vdates = {d for (_, _, d) in code_rows if _ == pid} | {first + dt.timedelta(days=int(rng.integers(0, span))) for _ in range(5)}
+        vdates = {d for (p, _c, d) in code_rows if p == pid} | {first + dt.timedelta(days=int(rng.integers(0, span))) for _ in range(5)}
         visit_rows += [(pid, d) for d in sorted(vdates) if d <= end]
         demo_rows.append((pid, "female" if rng.random() < 0.55 else "male", dt.date(int(rng.integers(1935, 1995)), int(rng.integers(1, 13)), 1)))
 
