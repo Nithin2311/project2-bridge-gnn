@@ -22,19 +22,21 @@ uv run python scripts/05_baselines.py --run-id B-lr --target cardiometabolic --m
 | `--target` | cardiometabolic, cancer_hematologic, mental_health, cancer_metastatic | required |
 | `--model` | prevalence, lr, hgb, hgb_all, mlp, mlp_pool, bridge_lr | required |
 | `--seeds` | integers | `cfg.seeds` |
-| `--subsample-file` | path to a text file with one development `person_id` per line; only those patients' development rows are used for selection and refit; test untouched | none |
+| `--subsample-file` | path template with a literal `{seed}`, e.g. `outputs/subsamples/C1-25_seed{seed}.txt`; for each seed the script reads that file (one development `person_id` per line) and uses only those patients' development rows for selection and refit; test untouched. The driver writes these files with `driver.subsample_patients` so step 05 and step 06 train on identical subsets | none |
 | `--synthetic` | run the same code path on `synth.make(0)` in a temp dir | off |
 
 Outputs: `outputs/predictions/{run_id}_{target}_seed{seed}.parquet`, a row per seed appended to
-`outputs/results/baselines.csv`, log at `outputs/logs/05_{target}_{model}.log`.
+`outputs/results/baselines.csv`, log at `outputs/logs/05_{target}_{model}.log`. `family` in the results row is
+looked up by `run_id` in `config/experiments.yaml` (`baseline` when the id is not listed, e.g. `B-lr`). Append
+= read existing CSV if present, concat, `contract.write`. stdout carries only the JSON lines.
 
 ## Step 06 — GNN on patient subgraphs (Plan 3, Nithin)
 
 ```
 uv run python scripts/06_gnn.py --run-id A1a --target cardiometabolic --arch sage --layer U
     --features CODE,DEMO,UTIL,TEMP,STRUCT,BRIDGE --lookback 1095 --expand 0 --weighted 1
-    --depth 2 --agg mean --heads 4 --hidden 64 --seeds 0 1 2 3 4 --subsample 1.0 --null-graph none
-    [--drop-codes none] [--subsample-file PATH] [--dry-run]
+    --depth 2 --agg mean --heads 4 --hidden 64 --seeds 0 1 2 3 4 --null-graph none
+    [--drop-codes none] [--subsample-file outputs/subsamples/C1-25_seed{seed}.txt] [--dry-run]
 ```
 
 | flag | values | default |
@@ -52,8 +54,7 @@ uv run python scripts/06_gnn.py --run-id A1a --target cardiometabolic --arch sag
 | `--heads` | 2, 4, 8 (GAT only) | 4 |
 | `--hidden` | 32, 64, 128 | 64 |
 | `--seeds` | integers | `cfg.seeds` |
-| `--subsample` | fraction of development patients in (0, 1]; patient-level, seeded | 1.0 |
-| `--subsample-file` | as step 05; overrides `--subsample` | none |
+| `--subsample-file` | as step 05 (same `{seed}` template; the only subsampling mechanism, so both steps see identical subsets) | none |
 | `--null-graph` | none, rewire0 .. rewire4, shuffle (requires `--layer N`) | none |
 | `--drop-codes` | none, bridge (remove the target's B-flag codes from the subgraph and the bag) | none |
 | `--dry-run` | print the resolved configuration and exit 0 without training | off |
@@ -80,7 +81,9 @@ Reads `config/experiments.yaml`. Each entry:
   note: "full features minus BRIDGE (features only)"
 ```
 
-The driver expands `targets: primary` from `p2.yaml`, writes subsample files for `subsample` overrides, runs
+The driver expands `targets: primary` from `p2.yaml`, injects `default_arch` as `--arch` when an experiment does
+not override it, writes `outputs/subsamples/{id}_seed{seed}.txt` for `subsample` overrides and passes the
+template via `--subsample-file` to both steps, runs
 one subprocess per (experiment, target), logs to `outputs/logs/07_{id}_{target}.log`, continues on failure,
 and summarises exit codes. `--dry-run` prints the commands and exits 0 even when the target script does not
 exist yet.

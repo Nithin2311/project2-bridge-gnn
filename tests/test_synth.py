@@ -42,3 +42,9 @@ def test_synth_planted_precedence():
     both = fa.join(fb, on="person_id")
     assert both.height >= 10
     assert (both["da"] < both["db"]).mean() >= 0.65
+
+
+def test_synth_nodes_all_is_superset_like_nodes_csv():
+    s = synth.make(0)
+    assert set(s.nodes["category"]) < set(s.nodes_all["category"])
+    assert set(s.nodes_all["category"]) == set(s.codes_long["category"])

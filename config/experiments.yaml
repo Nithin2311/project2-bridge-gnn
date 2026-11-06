@@ -32,6 +32,7 @@ experiments:
   - {id: B6c, family: B, base: gnn, targets: primary, overrides: {expand: 1},      note: "1-hop neighbour expansion"}
 
   # ---- C: scale (subgroup results come from step 08 on every run's predictions) ----
+  # subsample: the driver writes outputs/subsamples/{id}_seed{seed}.txt (patient-level, seeded) and passes --subsample-file
   - {id: C1-25, family: C, base: gnn, targets: primary, overrides: {subsample: 0.25}, note: "25% of development patients"}
   - {id: C1-50, family: C, base: gnn, targets: primary, overrides: {subsample: 0.50}, note: "50% of development patients"}
   - {id: C1-25-hgb, family: C, base: baseline, targets: primary, overrides: {model: hgb, subsample: 0.25}, note: "baseline learning curve"}
@@ -44,6 +45,7 @@ experiments:
   - {id: D1-rewire3, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire3}}
   - {id: D1-rewire4, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire4}}
   - {id: D1-shuffle, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: shuffle}, note: "edge-shuffled graph"}
+  # D2 (row-wise shuffled node features) is optional in the design; add a --shuffle-features flag to step 06 before enabling it here
 
   # ---- E: model ----
   - {id: E1-gcn3,  family: E, base: gnn, targets: primary, overrides: {arch: gcn,  depth: 3}}

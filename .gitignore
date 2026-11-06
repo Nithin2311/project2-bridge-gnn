@@ -10,6 +10,8 @@ ehrshot/
 outputs/*
 !outputs/.gitkeep
 !outputs/artifacts/
+!outputs/artifacts/*.csv
+!outputs/artifacts/*.json
 outputs/artifacts/*.parquet
 checkpoints/
 logs/*.log

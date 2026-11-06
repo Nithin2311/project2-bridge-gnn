@@ -41,10 +41,10 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | sex | Utf8 | female / male |
 | index_year | Int32 | |
 | days_since_first_dx | Int32 | index_date minus the patient's first ICD-10-era diagnosis date |
-| n_codes_lb365 | Int32 | distinct main-graph categories with a recording in (index - 365 d, index]; before masking |
+| n_codes_lb365 | Int32 | distinct main-graph (496-node) categories with a recording in (index - 365 d, index], EXCLUDING codes masked for the row's target |
 | n_codes_lb1095 | Int32 | same, 1,095 days |
 | n_codes_lball | Int32 | same, all era history |
-| n_rows_lb1095 | Int32 | diagnosis rows (not distinct) in the 1,095-day window; utilisation proxy |
+| n_rows_lb1095 | Int32 | sum of `n_rec_lb1095` over the row's unmasked categories (all categories, not only graph nodes): distinct (category, date) records, a utilisation proxy |
 | n_visit_days_365 | Int32 | distinct visit dates in (index - 365 d, index] |
 
 ### `row_codes` — one row per (patient, index date, category); shared across targets, masking per target
@@ -55,9 +55,10 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | category | Utf8 | any ICD-10 category recorded on or before the index (era only) |
 | first_date, last_date | Date | first and most recent recording on or before index |
 | days_since_first, days_since_last | Int32 | index minus those dates (>= 0) |
+| n_rec_lb365, n_rec_lb1095, n_rec_all | Int32 | distinct (category, date) records of this category in the 365-day, 1,095-day and all-era windows |
 | in_lb365, in_lb1095 | Boolean | last_date inside the window; all-history membership is implied by the row existing |
-| in_main_graph | Boolean | category is one of the 496 Project 1 nodes |
-| masked_{target} | Boolean x 4 | category is in that target's stable core or chapter block (excluded from inputs for that target) |
+| in_main_graph | Boolean | category is one of the 496 Project 1 main-graph nodes (`graph_nodes.csv`, not the 617-row `nodes.csv`) |
+| masked_{target} | Boolean x 4 | category is in that target's stable core OR falls in the target's a-priori ICD-10 chapter-block ranges (P1 config `centrality.chapter_blocks`), evaluated over every observed category, graph node or not; such codes are excluded from every input for that target |
 
 ### `node_index` — `category` Utf8, `idx` Int32 (0..n-1); row `idx` of `node_x.npy` is that category.
 
@@ -107,5 +108,5 @@ target), `all_` (bag over every category with >= 10 development rows, masked), `
 ## Leakage rules the contract enforces or supports
 
 - Test rows never enter a fit: functions that fit take a `dev_mask` and assert it.
-- Masked codes are absent from every input column for that target.
+- Masked codes are absent from every input column for that target, including the `all_` bag; the counts in `rows` already exclude them. To count masked codes for a diagnostic, use `row_codes` directly.
 - Node features and edges are Project 1 train+val artifacts; test patients never contributed to them.

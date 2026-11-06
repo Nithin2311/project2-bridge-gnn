@@ -7,7 +7,6 @@ paths:
   outputs: outputs
   data_env: EHRSHOT_DATA                  # folder with the 13 EHRShot CSVs; falls back to data_default
   data_default: ../FinalProject/data
-  cache: .cache/ehrshot.duckdb            # Project 2's own DuckDB; views are re-created on every connect (P1's cache went stale when the folder was renamed)
 
 task:
   definition: core          # stable-core target definition is PRIMARY (P1 decision 2026-10-16); community/chapter = sensitivity

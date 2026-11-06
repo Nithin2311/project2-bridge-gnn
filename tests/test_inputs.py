@@ -28,7 +28,18 @@ def test_class_balance_has_all_row(synth):
 
 @pytest.mark.skipif(not REAL_P1.exists(), reason="Project 1 outputs not present")
 def test_real_counts_match_label_counts():
-    labels = inputs.task_labels(pl.read_parquet(REAL_P1 / "p2_labels.parquet"), config.load())
+    cfg = config.load()
+    labels = inputs.task_labels(pl.read_parquet(REAL_P1 / "p2_labels.parquet"), cfg)
     bal = inputs.class_balance(labels)
-    cm = bal.filter((pl.col("target") == "cardiometabolic") & (pl.col("split") == "all")).row(0, named=True)
-    assert cm["positives"] == 163 and cm["rows"] == 1863 - 182
+    ref = pl.read_csv(REAL_P1 / "p2_label_counts.csv").filter(
+        (pl.col("definition") == "core") & (pl.col("horizon_months") == 12))
+    joined = bal.join(ref, on=["target", "split"], suffix="_ref")
+    assert joined.height == 16
+    assert (joined["positives"] == joined["positives_ref"]).all()
+    assert (joined["rows"] == joined["rows_ref"] - joined["censored"]).all()
+
+
+@pytest.mark.skipif(not REAL_P1.exists(), reason="Project 1 outputs not present")
+def test_real_graph_nodes_is_the_496_node_main_graph():
+    assert "graph_nodes.csv" in inputs.P1_FILES
+    assert pl.read_csv(REAL_P1 / "graph_nodes.csv").height == 496

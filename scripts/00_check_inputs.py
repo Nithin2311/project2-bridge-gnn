@@ -19,7 +19,7 @@ if missing:
     sys.exit(1)
 print(f"  all {len(inputs.P1_FILES)} required files present")
 
-from bridgegnn import db  # noqa: E402  (after the path check so a missing P1 repo fails loudly above)
+from bridgegnn import db
 
 con = db.connect(cfg)
 print(f"  data dir {db._data_dir(cfg)}")

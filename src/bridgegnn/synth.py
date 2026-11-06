@@ -11,7 +11,6 @@ from dataclasses import dataclass
 import networkx as nx
 import numpy as np
 import polars as pl
-
 from bridgedx import labels as p1_labels
 
 from .contract import TARGETS
@@ -29,7 +28,8 @@ class SynthData:
     visits: pl.DataFrame
     demo: pl.DataFrame
     split: pl.DataFrame
-    nodes: pl.DataFrame
+    nodes: pl.DataFrame          # the main-graph node list (like P1 graph_nodes.csv, 496 real)
+    nodes_all: pl.DataFrame      # every candidate category incl. R/Z-like extras (like P1 nodes.csv, 617 real)
     target_defs: pl.DataFrame
     bridges: pl.DataFrame
     graph: nx.Graph
@@ -46,7 +46,7 @@ def make(seed: int = 0, n_patients: int = 60, n_categories: int = 30) -> SynthDa
     rng = np.random.default_rng(seed)
     cats = _categories(n_categories)
     n_nodes = max(4, int(n_categories * 2 / 3))
-    node_cats, extra_cats = cats[:n_nodes], cats[n_nodes:]
+    node_cats = cats[:n_nodes]
     a, b = node_cats[0], node_cats[1]
 
     # targets: cores of 2 node codes each, community = core + 1, chapter block = core + 1 other
@@ -105,6 +105,9 @@ def make(seed: int = 0, n_patients: int = 60, n_categories: int = 30) -> SynthDa
     chapters = {"A": "infectious", "B": "infectious", "C": "neoplasms", "D": "blood", "E": "endocrine/metabolic", "F": "mental"}
     nodes = pl.DataFrame({"category": node_cats, "name": [f"Synthetic condition {c}" for c in node_cats],
                           "chapter": [chapters.get(c[0], "other") for c in node_cats]})
+    nodes_all = pl.DataFrame({"category": cats, "name": [f"Synthetic condition {c}" for c in cats],
+                              "chapter": [chapters.get(c[0], "other") for c in cats],
+                              "flagged": [c not in node_cats for c in cats]})
     td_rows = []
     for t in TARGETS:
         for c in node_cats:
@@ -127,4 +130,4 @@ def make(seed: int = 0, n_patients: int = 60, n_categories: int = 30) -> SynthDa
             br_rows.append((p, c, score, score > 0.006))
     bridges = pl.DataFrame(br_rows, schema=["pair", "category", "bridge_betweenness", "bridge_pass"], orient="row")
 
-    return SynthData(labels, codes_long, visits, demo, split, nodes, target_defs, bridges, g, (a, b), targets)
+    return SynthData(labels, codes_long, visits, demo, split, nodes, nodes_all, target_defs, bridges, g, (a, b), targets)

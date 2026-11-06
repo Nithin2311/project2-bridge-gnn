@@ -22,6 +22,7 @@ SCHEMAS: dict[str, dict[str, pl.DataType]] = {
         "person_id": pl.Int64, "index_date": pl.Date, "category": pl.Utf8,
         "first_date": pl.Date, "last_date": pl.Date,
         "days_since_first": pl.Int32, "days_since_last": pl.Int32,
+        "n_rec_lb365": pl.Int32, "n_rec_lb1095": pl.Int32, "n_rec_all": pl.Int32,
         "in_lb365": pl.Boolean, "in_lb1095": pl.Boolean, "in_main_graph": pl.Boolean,
         **{f"masked_{t}": pl.Boolean for t in TARGETS},
     },

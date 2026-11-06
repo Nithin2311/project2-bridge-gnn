@@ -7,7 +7,7 @@ import polars as pl
 
 P1_FILES = [
     "p2_labels.parquet", "p2_label_counts.csv", "patient_split.csv", "target_definitions.csv", "nodes.csv",
-    "bridges.csv", "subgroup_labels.csv", "patient_category.parquet", "graph_main.graphml",
+    "graph_nodes.csv", "bridges.csv", "p2/patient_index_subgraphs.csv", "subgroup_labels.csv", "patient_category.parquet", "graph_main.graphml",
     "p2/node_features.csv", "p2/graph_backbone_topk.graphml",
 ]
 

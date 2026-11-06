@@ -94,12 +94,13 @@ def test_row_with_only_masked_codes_survives():
     masks = {"cardiometabolic": {"E11"}}
     rc = rows.build_row_codes(idx, one, nodes_with(["E11"]), masks, TASK_CFG)
     labels = pl.DataFrame({"person_id": pl.Series([1], dtype=pl.Int64), "split": ["train"], "index_date": [date(2019, 1, 1)],
-                           "target": ["mental_health"], "positive": [False], "days_to_event": pl.Series([None], dtype=pl.Int64),
+                           "target": ["cardiometabolic"], "positive": [False], "days_to_event": pl.Series([None], dtype=pl.Int64),
                            "history_days": pl.Series([800], dtype=pl.Int64), "followup_days": pl.Series([400], dtype=pl.Int64)})
     visits = pl.DataFrame({"person_id": pl.Series([1], dtype=pl.Int64), "visit_date": [date(2018, 12, 1)]})
     demo = pl.DataFrame({"person_id": pl.Series([1], dtype=pl.Int64), "sex": ["female"], "birth_date": [date(1960, 1, 1)]})
     r = rows.build_rows(labels, rc, visits, demo, one, TASK_CFG)
-    assert r.height == 1 and r["n_codes_lb1095"][0] == 1 and rc["masked_cardiometabolic"][0]
+    assert r.height == 1 and rc["masked_cardiometabolic"][0]
+    assert r["n_codes_lb1095"][0] == 0 and r["n_codes_lball"][0] == 0 and r["n_rows_lb1095"][0] == 0
 
 
 def test_lookback_window_boundary():
@@ -109,3 +110,29 @@ def test_lookback_window_boundary():
     idx = pl.DataFrame({"person_id": pl.Series([1], dtype=pl.Int64), "index_date": [idx_d]})
     rc = rows.build_row_codes(idx, one, nodes_with(["A01", "A02"]), {}, TASK_CFG).sort("category")
     assert rc["in_lb365"].to_list() == [False, True]
+
+
+def test_mask_sets_includes_in_range_category_that_is_not_a_node(synth):
+    blocks = {"cardiometabolic": [["I20", "I25"]], "cancer_metastatic": [], "cancer_hematologic": [], "mental_health": []}
+    m = rows.mask_sets(synth.target_defs, TASK_CFG, chapter_blocks=blocks, categories=["I22", "I30", "Z79"])
+    assert "I22" in m["cardiometabolic"] and "I30" not in m["cardiometabolic"] and "Z79" not in m["cardiometabolic"]
+    core = set(synth.target_defs.filter((pl.col("target") == "cardiometabolic") & pl.col("in_core"))["category"])
+    assert core <= m["cardiometabolic"]
+
+
+def test_row_codes_record_counts_per_window():
+    d = date(2019, 1, 1)
+    one = pl.DataFrame({"person_id": pl.Series([1] * 4, dtype=pl.Int64), "category": ["I10"] * 4,
+                        "condition_date": [d, d - timedelta(days=100), d - timedelta(days=400), d - timedelta(days=1100)]})
+    idx = pl.DataFrame({"person_id": pl.Series([1], dtype=pl.Int64), "index_date": [d]})
+    rc = rows.build_row_codes(idx, one, nodes_with(["I10"]), {}, TASK_CFG)
+    assert rc["n_rec_lb365"][0] == 2 and rc["n_rec_lb1095"][0] == 3 and rc["n_rec_all"][0] == 4
+
+
+def test_rows_counts_exclude_masked_codes_of_own_target(built):
+    _, _, _, rc, r = built
+    one = r.filter(pl.col("target") == "cardiometabolic").row(0, named=True)
+    sub = rc.filter((pl.col("person_id") == one["person_id"]) & (pl.col("index_date") == one["index_date"]))
+    expected = sub.filter(pl.col("in_lb1095") & pl.col("in_main_graph") & ~pl.col("masked_cardiometabolic")).height
+    assert one["n_codes_lb1095"] == expected
+    assert one["n_rows_lb1095"] == sub.filter(~pl.col("masked_cardiometabolic"))["n_rec_lb1095"].sum()

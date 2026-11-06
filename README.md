@@ -40,8 +40,9 @@ uv run pytest -q                                      # synthetic tests, no data
 uv run python scripts/00_check_inputs.py              # verifies Project 1 outputs and the DuckDB cache
 ```
 
-Project 1 (`../project1-bridge-dx`) is a path dependency: its category map, DuckDB access and null models are
-imported, and its `outputs/` folder is read as input. It is frozen; nothing here writes to it.
+Project 1 (`../project1-bridge-dx`) is a path dependency: its category map, label rules, range helper and null
+models are imported (duckdb is pinned below 2.0 for that), and its `outputs/` folder is read as input. It is frozen;
+nothing here writes to it. DuckDB runs in memory with views over the CSVs; no cache file is kept.
 
 ## Pipeline
 

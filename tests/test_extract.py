@@ -1,7 +1,6 @@
 from datetime import date
 
 import duckdb
-import polars as pl
 import pytest
 
 from bridgegnn import extract

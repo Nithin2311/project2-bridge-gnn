@@ -1,6 +1,7 @@
 import pytest
 
-from bridgegnn import config as _config, synth as _synth
+from bridgegnn import config as _config
+from bridgegnn import synth as _synth
 
 
 @pytest.fixture(scope="session")

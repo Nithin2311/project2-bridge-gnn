@@ -13,6 +13,12 @@ def test_connect_registers_views_from_data_dir(tmp_path, monkeypatch):
     assert con.execute("select count(*) from person").fetchone()[0] == 2
 
 
+def test_connect_raises_when_no_csvs(tmp_path):
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        db.connect({"paths": {"data_env": "X_UNSET", "data_default": str(tmp_path)}})
+
+
 def test_connect_refreshes_stale_view(tmp_path):
     data1, data2 = tmp_path / "d1", tmp_path / "d2"
     data1.mkdir(); data2.mkdir()
