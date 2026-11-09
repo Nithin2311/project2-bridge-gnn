@@ -18,9 +18,9 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import torch
-import torch.nn as nn
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.model_selection import GroupKFold
+from torch import nn
 from torch_geometric.loader import DataLoader
 
 from .. import contract
@@ -148,7 +148,7 @@ def _metrics(y: np.ndarray, p: np.ndarray) -> dict:
     two = len(np.unique(y)) == 2
     return {"test_auroc": float(roc_auc_score(y, p)) if two else float("nan"),
             "test_auprc": float(average_precision_score(y, p)) if two else float("nan"),
-            "test_brier": float(brier_score_loss(y, p)), "n_test_rows": int(len(y)), "n_test_pos": int(y.sum())}
+            "test_brier": float(brier_score_loss(y, p)), "n_test_rows": len(y), "n_test_pos": int(y.sum())}
 
 
 def _upsert_results(path: Path, row: dict) -> None:
