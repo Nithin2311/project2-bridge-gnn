@@ -1,4 +1,4 @@
-# Plan D (Dylan): step 02 features, step 05 non-graph baselines, step 07 experiment driver
+# Plan for Dylan: step 02 features, step 05 non-graph baselines, step 07 experiment driver
 
 
 **Goal:** Produce the feature matrices every model shares (step 02), the tuned non-graph baselines the GNNs must beat (step 05), and the driver that runs the spec's experiment grid (step 07).
