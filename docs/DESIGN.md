@@ -6,7 +6,7 @@ Authors: Nithin Palyam (plan), Dylan Girrens (to review and take ownership of bl
 Inputs: Project 1 pipeline and outputs, P2-READINESS.md, the two P2 literature briefs, the Project 2 description
 and rubric, Dr. Kim's scoping call of 2026-11-05.
 
-Items marked **[default]** are defaults chosen by the planner, not decisions anyone has made; override freely.
+Items marked **[default]** are working defaults, not decisions anyone has made; override freely.
 Items marked **[open]** need a human answer before implementation. Items marked **[rubric]** are required by the
 Project 2 description.
 
