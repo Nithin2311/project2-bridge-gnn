@@ -56,8 +56,8 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 | 05 | `05_baselines.py` — non-graph baselines, GroupKFold, refit, test once | D |
 | 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs; GroupKFold selection, refit, test once; all experiment flags; 25-135 s per (arch, target) on the M4 | N (done) |
 | 07 | `07_experiments.py` — drives the experiment grid | D |
-| 08 | `08_evaluate.py` — bootstrap CIs, calibration, plots, tables | N |
-| 09 | `09_pre2020_graph.py` — time-respecting rebuild + backtest | N |
+| 08 | `08_evaluate.py` — patient-bootstrap CIs, calibration, F1 at the dev threshold, strata, paired deltas, ROC/PR/curve figures, LaTeX tables | N (done) |
+| 09 | `09_pre2020_graph.py` — pre-2020 rebuild (P1 rules) and the B5 / backtest runs via step 06 | N (done) |
 
 ## Branches
 

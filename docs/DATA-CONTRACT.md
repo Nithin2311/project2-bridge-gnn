@@ -33,6 +33,8 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/results/*.csv` | 05, 06, 07 | 08 | `results` |
 | `outputs/logs/06_{run_id}_{target}_seed{seed}.json` | 06 | report | `{"selection": [per-fold {train_loss, val_auprc, val_loss}] for the winning grid point, "grid": [every grid point with fold_scores, fold_epochs, mean_score], "refit": {train_loss}, "best_params", "epochs", "dev_oof_auprc", "prob_correction": "prior_shift"}` |
 | `outputs/logs/*.log` | 05, 06, 07 | humans | free text; step 06 writes one JSON line per run start and per results row |
+| `outputs/eval/tables/*.csv|tex`, `outputs/eval/figures/*.pdf` | step 08 (Nithin) | report | per-run metrics with patient-bootstrap intervals, aggregated runs, reliability bins, strata, paired deltas; ROC/PR, reliability, training-curve figures |
+| `outputs/pre2020/{graph.graphml, edges.csv, node_features.csv, bridges.csv, target_definitions.csv, features/, summary.csv}` | step 09 (Nithin) | 06 (B5-P, BT-P), report | time-respecting rebuild from development records before `rebuild.cutoff`; same 496 nodes; `summary.csv` has edge Jaccard, ARI and bridge overlap vs Layer U; time-invariant node columns copied from P1 (stated) |
 
 ## Schemas
 
