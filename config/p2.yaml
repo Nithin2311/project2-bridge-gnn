@@ -77,6 +77,7 @@ eval:                        # step 08
   min_stratum_pos: 10        # strata with fewer positives are reported as n/a
   calib_bins: 10
   baselines_for_pairing: [B-hgb_all, B-mlp_pool]   # paired GNN-vs-baseline deltas when these predictions exist (step 05)
+  paired_runs: [[B5-P, B5-U], [BT-P, BT-U]]        # explicit pairings on identical rows (time-respecting graph vs Layer U)
 
 rebuild:                     # step 09: time-respecting graph (design 5a, experiment B5) and the temporal backtest
   cutoff: "2020-01-01"       # development records before this date rebuild the graph, cores, bridges, node features

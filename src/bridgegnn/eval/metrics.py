@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import numpy as np
 import polars as pl
+from scipy.optimize import brentq
+from scipy.special import expit
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
@@ -42,12 +44,15 @@ def bootstrap_ci(y: np.ndarray, p: np.ndarray, person_id: np.ndarray, stat, n: i
 
 
 def calibration(y: np.ndarray, p: np.ndarray) -> dict:
+    """brier; slope and intercept_joint from y ~ a + b*logit(p); citl = calibration-in-the-large, the intercept
+    of y ~ a + offset(logit(p)) with the slope fixed at 1 (Van Calster / Steyerberg)."""
     y, p = np.asarray(y, dtype=int), np.clip(np.asarray(p, dtype=float), EPS, 1 - EPS)
-    out = {"brier": float(brier_score_loss(y, p)), "slope": float("nan"), "intercept": float("nan")}
+    out = {"brier": float(brier_score_loss(y, p)), "slope": float("nan"), "intercept_joint": float("nan"), "citl": float("nan")}
     if len(np.unique(y)) == 2:
-        logit = np.log(p / (1 - p)).reshape(-1, 1)
-        lr = LogisticRegression(C=1e6, max_iter=1000).fit(logit, y)
-        out["slope"], out["intercept"] = float(lr.coef_[0, 0]), float(lr.intercept_[0])
+        logit = np.log(p / (1 - p))
+        lr = LogisticRegression(C=1e6, max_iter=1000).fit(logit.reshape(-1, 1), y)
+        out["slope"], out["intercept_joint"] = float(lr.coef_[0, 0]), float(lr.intercept_[0])
+        out["citl"] = float(brentq(lambda a: float((y - expit(a + logit)).sum()), -20, 20))
     return out
 
 
@@ -58,7 +63,7 @@ def reliability(y: np.ndarray, p: np.ndarray, bins: int) -> pl.DataFrame:
     return pl.DataFrame({"bin": list(range(1, bins + 1)),
                          "p_mean": [float(p[c].mean()) if len(c) else float("nan") for c in chunks],
                          "y_rate": [float(y[c].mean()) if len(c) else float("nan") for c in chunks],
-                         "n": [int(len(c)) for c in chunks]})
+                         "n": [len(c) for c in chunks]})
 
 
 def f1_threshold(y_dev: np.ndarray, p_dev: np.ndarray) -> float:
@@ -94,7 +99,7 @@ def stratified(df: pl.DataFrame, strata: list[str], min_pos: int) -> pl.DataFram
             y, p = sub["y"].to_numpy().astype(int), sub["p"].to_numpy()
             pos = int(y.sum())
             ok = pos >= min_pos and (len(y) - pos) >= 1
-            rows.append({"stratum": s, "level": str(lv), "n": int(len(y)), "pos": pos,
+            rows.append({"stratum": s, "level": str(lv), "n": len(y), "pos": pos,
                          "auroc": auroc(y, p) if ok else None, "auprc": auprc(y, p) if ok else None})
     return pl.DataFrame(rows, schema={"stratum": pl.Utf8, "level": pl.Utf8, "n": pl.Int64, "pos": pl.Int64,
                                       "auroc": pl.Float64, "auprc": pl.Float64})

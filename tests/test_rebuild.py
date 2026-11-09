@@ -21,9 +21,9 @@ def test_restricted_table_filters_and_asserts(synth):
     assert (pc["first_date"] < date(2020, 1, 1)).all()
     test_ids = set(synth.split.filter(pl.col("split") == "test")["person_id"])
     assert not (set(pc["person_id"]) & test_ids)
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         rebuild._check_table(pc.with_columns(pl.lit(date(2021, 1, 1)).alias("first_date")), test_ids, "2020-01-01")
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         rebuild._check_table(pc.with_columns(pl.lit(next(iter(test_ids))).cast(pl.Int64).alias("person_id")), test_ids, "2020-01-01")
 
 
@@ -45,12 +45,27 @@ def test_cores_bridges_and_node_features(synth, p1_cfg, node_feats):
     anchors = {t: sorted(c)[:1] for t, c in synth.targets["core"].items()}
     partition, target_defs, bridges = rebuild.cores_and_bridges(g, p1_cfg, anchors, n_seeds=4, n_null=2)
     assert set(partition) == set(g.nodes)
-    assert {"target", "category", "in_core"} <= set(target_defs.columns)
+    assert {"target", "category", "in_core", "coassignment_mean_anchors"} <= set(target_defs.columns)
     assert {"pair", "category", "bridge_betweenness", "bridge_pass"} <= set(bridges.columns)
-    nf = rebuild.node_features(g, partition, bridges, node_feats)
+    pc = synth.codes_long.group_by("person_id", "category").agg(pl.col("condition_date").min().alias("first_date"))
+    inpatient = pl.DataFrame({"category": list(g.nodes), "inpatient_share": [0.1] * g.number_of_nodes()})
+    nf = rebuild.node_features(g, partition, bridges, node_feats, pc=pc, demo=synth.demo, inpatient=inpatient, n_null_bt=2)
     assert set(nodefeat.STRUCT_COLS) | {"category", "community_seed0", "bridge_survivor", "chapter"} <= set(nf.columns)
+    assert nf["female_share"].null_count() == 0 and (nf["female_share"] <= 1).all() and nf["mean_age_first_occurrence"].null_count() == 0
+    assert (nf["inpatient_share"] == 0.1).all() and nf["bt_null_percentile"].null_count() == 0
     _idx, X, _groups = nodefeat.build(nf, bridges, list(anchors))
     assert X.shape[0] == g.number_of_nodes()
+
+
+def test_empty_core_is_reported(synth, p1_cfg):
+    g = synth.graph
+    anchors = {"ghost": ["ZZ9", "ZZ8"], "real": sorted(next(iter(synth.targets["core"].values())))[:1]}
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        _, td, _ = rebuild.cores_and_bridges(g, p1_cfg, anchors, n_seeds=3, n_null=1)
+    assert any("ghost" in str(x.message) for x in w)
+    assert td.filter((pl.col("target") == "ghost") & pl.col("in_core")).height == 0
 
 
 def test_compare_reports_overlap(synth):
@@ -59,6 +74,9 @@ def test_compare_reports_overlap(synth):
     part = {v: i % 3 for i, v in enumerate(g.nodes)}
     ba = pl.DataFrame({"category": ["A00", "B07"], "bridge_pass": [True, True]})
     bb = pl.DataFrame({"category": ["A00", "C14"], "bridge_pass": [True, True]})
+    ba = ba.with_columns(pl.Series("pair", ["x-y", "x-z"])); bb = bb.with_columns(pl.Series("pair", ["x-y", "x-y"]))
     out = rebuild.compare(h, g, part, part, bb, ba)
     expected = h.number_of_edges() / g.number_of_edges()
-    assert abs(out["edge_jaccard"] - expected) < 1e-9 and out["ari"] == 1.0 and abs(out["bridge_jaccard"] - 1 / 3) < 1e-9
+    # shared pair x-y only: new {A00, C14} vs old {A00} -> 1/2
+    assert abs(out["edge_jaccard"] - expected) < 1e-9 and out["ari"] == 1.0 and abs(out["bridge_jaccard_shared_pairs"] - 0.5) < 1e-9
+    assert out["n_shared_pairs"] == 1 and "ari_non_isolates" in out

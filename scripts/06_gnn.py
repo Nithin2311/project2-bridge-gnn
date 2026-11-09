@@ -115,6 +115,8 @@ def main(argv=None):
         sys.exit(f"unknown feature groups {sorted(bad)}")
     if (args.layer == "N") != (args.null_graph != "none"):
         sys.exit("--layer N and --null-graph must be used together")
+    if args.layer_file and (args.layer != "U" or args.null_graph != "none"):
+        sys.exit("--layer-file replaces the layer; do not combine it with --layer or --null-graph")
     directed = args.layer == "D"
     if args.layer_file:
         directed = nx.read_graphml(args.layer_file).is_directed()

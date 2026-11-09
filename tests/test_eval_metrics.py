@@ -12,14 +12,17 @@ def test_bootstrap_perfect_classifier_is_one():
 
 
 def test_bootstrap_resamples_whole_patients():
-    y = np.array([0, 1, 0, 1]); p = np.array([0.1, 0.9, 0.2, 0.8]); pid = np.array([1, 1, 2, 2])
+    # patient 1 has 1 row (p=0.11), patient 2 has 3 rows (0.21, 0.22, 0.23): a resample must contain whole patients
+    y = np.array([0, 1, 0, 1]); p = np.array([0.11, 0.21, 0.22, 0.23]); pid = np.array([1, 2, 2, 2])
     seen = []
 
     def stat(yy, pp):
-        seen.append(len(yy))
+        seen.append(sorted(pp.tolist()))
         return 1.0
-    metrics.bootstrap_ci(y, p, pid, stat, n=20, seed=0)
-    assert all(k % 2 == 0 for k in seen[1:])   # every resample holds complete patients (2 rows each)
+    metrics.bootstrap_ci(y, p, pid, stat, n=30, seed=0)
+    for ps in seen[1:]:
+        n1, n2 = ps.count(0.11), ps.count(0.21)
+        assert ps.count(0.22) == n2 and ps.count(0.23) == n2 and n1 + n2 == 2 and len(ps) == n1 + 3 * n2
 
 
 def test_calibration_recovers_slope_one_on_calibrated_probs():
@@ -27,7 +30,10 @@ def test_calibration_recovers_slope_one_on_calibrated_probs():
     p = rng.uniform(0.02, 0.5, size=5000)
     y = (rng.uniform(size=5000) < p).astype(int)
     c = metrics.calibration(y, p)
-    assert abs(c["slope"] - 1) < 0.1 and abs(c["intercept"]) < 0.15 and 0 < c["brier"] < 0.25
+    assert abs(c["slope"] - 1) < 0.1 and abs(c["intercept_joint"]) < 0.15 and 0 < c["brier"] < 0.25
+    assert abs(c["citl"]) < 0.1   # calibration-in-the-large: intercept with logit(p) as offset
+    shifted = metrics.calibration(y, np.clip(p * 0.5, 1e-3, 1))
+    assert shifted["citl"] > 0.3
     rel = metrics.reliability(y, p, bins=10)
     assert rel.height == 10 and set(rel.columns) == {"bin", "p_mean", "y_rate", "n"}
 
