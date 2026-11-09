@@ -21,11 +21,13 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/features/feature_groups.json` | step 02 | 05, 06, 08 | `{group: [column names]}` for `STRUCT`, `BRIDGE`, `CHAPTER`, `COMMUNITY` (node columns) and `CODE`, `ALL`, `DEMO`, `UTIL`, `TEMP`, `POOL` (row columns) |
 | `outputs/features/tabular_{target}_{split}.parquet` | step 02 | 05 | `tabular` |
 | `outputs/artifacts/*.csv`, `construction_thresholds.json` | step 02 | report | aggregate deliverables (rubric) |
-| `outputs/layers/edges_directed.csv` (+ `_g0`, `_g90`, `_dayone` sensitivities) | step 03 (Nithin) | 06, 08, report | `edges_directed` |
-| `outputs/layers/graph_directed.graphml` (Layer D), `graph_bh.graphml` (U-bh), `null/rewire{0..4}.graphml`, `null/shuffle.graphml` (Layer N) | step 03 | 06 | graphml; node attributes as in P1 `graph_main.graphml`; edge `weight`, `phi`, `distance` |
-| `outputs/layers/edges_bh.csv` | step 03 | report | P1 `edges.csv` columns + `q_bh` |
+| `outputs/layers/edges_directed.csv` (+ `_g0`, `_g90`, `_incl_dayone` sensitivities) | step 03 (Nithin) | 06, 08, report | `edges_directed` |
+| `outputs/layers/graph_directed.graphml` (Layer D; a DAG; edge `weight` = share, `phi`, `distance` = 1/phi), `graph_bh.graphml` (U-bh; `weight` = phi), `null/rewire{0..4}.graphml` (degree-preserving; edge `weight`, `distance`), `null/shuffle.graphml` (same edge count, degrees NOT preserved) | step 03 | 06 | graphml; node attributes as in P1 `graph_main.graphml` |
+| `outputs/layers/edges_bh.csv` | step 03 | report | P1 `edges.csv` columns + `q_bh`; BH over the full P1 family of 190,036 tested pairs, then the P1 OR/support floors and the 496-node restriction; family size recorded in `layer_stats.csv` |
 | `outputs/layers/tables/{directed_summary,directed_into_cores,directed_through_bridges,layer_stats}.csv` | step 03 | report | aggregate; may be copied to `outputs/artifacts/` |
-| `outputs/motifs/{triad_census,bridge_middle_share,bridge_chains}.csv`, `fig_motif_z.pdf` | step 04 (Nithin) | report | aggregate; may be copied to `outputs/artifacts/` |
+| `outputs/motifs/triad_census.csv` | step 04 (Nithin) | report | per triad class: `observed`, free-null `null_mean/null_sd/z/p_emp`, Layer-U-restricted null `null_u_mean/null_u_sd/z_u/p_emp_u`; z only for connected classes with non-zero null SD; the U-restricted null is the primary comparison |
+| `outputs/motifs/bridge_middle_share.csv` | step 04 | report | per bridge code: feed-forward triads with it as middle (`n_middle`, `share_of_ff`) and those ending in a target core with a non-core start (`n_middle_into_core_<target>`) |
+| `outputs/motifs/bridge_chains.csv`, `fig_motif_z.pdf` | step 04 | report | recorded-order triples a -> bridge -> core code: `n_patients` (ordered with the gap on both steps), `n_patients_entry` (no code of that core before the bridge, judged before the day-one drop), `a_in_graph` (R/Z/O and sub-floor starts are flagged False). Not a statement about entry into the core unless the entry column is used. |
 | `outputs/predictions/{run_id}_{target}_seed{seed}.parquet` | 05, 06 | 08 | `predictions` |
 | `outputs/results/*.csv` | 05, 06, 07 | 08 | `results` |
 | `outputs/logs/*.log` | 05, 06, 07 | humans | free text |

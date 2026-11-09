@@ -85,5 +85,20 @@ def test_to_digraph_and_tables(synth):
     assert all(r["dst"] in cores[r["target"]] and r["src"] not in cores[r["target"]] for r in into.iter_rows(named=True))
     thr = directed.edges_through_bridges(de, {de["src"][0]})
     assert set(thr["role"]) <= {"into_bridge", "out_of_bridge"} and thr.height >= 1
-    s = directed.summary(de, g_u)
-    assert {"n_directed", "n_undirected", "share_directed", "median_share", "n_tested"} <= set(s)
+    s = directed.summary(de, g_u, n_tested=counts.height)
+    assert {"n_directed", "n_undirected", "share_directed", "median_share", "n_tested", "share_undetermined"} <= set(s)
+
+
+def test_day_one_code_excluded_in_primary_but_counted_in_sensitivity():
+    pc = pl.DataFrame({"person_id": pl.Series([1, 1], dtype=pl.Int64), "category": ["A", "B"],
+                       "first_date": [date(2018, 1, 1), date(2018, 6, 1)]})
+    split = pl.DataFrame({"person_id": pl.Series([1], dtype=pl.Int64), "split": ["train"]})
+    drop = directed.precedence_counts(directed.first_dates(pc, split, ["train", "val"], True), [("A", "B")], 30).row(0, named=True)
+    keep = directed.precedence_counts(directed.first_dates(pc, split, ["train", "val"], False), [("A", "B")], 30).row(0, named=True)
+    assert drop["n_ab"] == 0 and keep["n_ab"] == 1
+
+
+def test_summary_requires_n_tested(synth):
+    import pytest
+    with pytest.raises(TypeError):
+        directed.summary(pl.DataFrame(), synth.graph)

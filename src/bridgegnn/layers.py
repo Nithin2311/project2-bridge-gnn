@@ -5,23 +5,26 @@ import random
 
 import networkx as nx
 import polars as pl
+from bridgedx.null_models import rewired
 from statsmodels.stats.multitest import multipletests
 
-from bridgedx.null_models import rewired
 
-OR_FLOOR = 1.2        # same floors as Project 1 config edges.min_odds_ratio / min_shared_patients
-SUPPORT_FLOOR = 10
+def bh_edges(edges_all: pl.DataFrame, node_set: set[str], cfg: dict) -> tuple[pl.DataFrame, int]:
+    """U-bh: Project 1's full pair table with BH-FDR on p_fisher in place of Bonferroni.
 
-
-def bh_edges(edges_all: pl.DataFrame, node_set: set[str], cfg: dict) -> pl.DataFrame:
-    """Project 1's full pair table filtered by BH-FDR on p_fisher instead of Bonferroni; same OR and support floors."""
+    BH runs over the SAME family Project 1 corrected over (every tested pair in edges.csv); the OR and support
+    floors (from the P1 config, passed as cfg["p1_edges"]) and the main-graph node restriction are applied
+    afterwards, exactly as in Project 1. Returns (edges, family size)."""
+    family_n = edges_all.height
+    q = multipletests(edges_all["p_fisher"].to_numpy(), method="fdr_bh")[1]
     nodes = list(node_set)
-    cand = edges_all.filter(pl.col("u").is_in(nodes) & pl.col("v").is_in(nodes)
-                            & (pl.col("odds_ratio") >= OR_FLOOR) & (pl.col("n_both") >= SUPPORT_FLOOR))
-    if cand.height == 0:
-        return cand.with_columns(pl.lit(None, dtype=pl.Float64).alias("q_bh"))
-    q = multipletests(cand["p_fisher"].to_numpy(), method="fdr_bh")[1]
-    return cand.with_columns(pl.Series("q_bh", q)).filter(pl.col("q_bh") < float(cfg["layers"]["bh_alpha"]))
+    floors = cfg.get("p1_edges", {"min_odds_ratio": 1.2, "min_shared_patients": 10})
+    out = (edges_all.with_columns(pl.Series("q_bh", q))
+           .filter(pl.col("u").is_in(nodes) & pl.col("v").is_in(nodes)
+                   & (pl.col("odds_ratio") >= float(floors["min_odds_ratio"]))
+                   & (pl.col("n_both") >= int(floors["min_shared_patients"]))
+                   & (pl.col("q_bh") < float(cfg["layers"]["bh_alpha"]))))
+    return out, family_n
 
 
 def graph_from_edges(edges: pl.DataFrame, g_template: nx.Graph) -> nx.Graph:
@@ -38,7 +41,8 @@ def rewired_graphs(g_u: nx.Graph, n: int, seed: int) -> list[nx.Graph]:
 
 
 def shuffled_graph(g_u: nx.Graph, seed: int) -> nx.Graph:
-    """Same nodes and edge count, endpoints drawn uniformly (no loops, no duplicates), weights reassigned at random."""
+    """Same nodes and edge count, endpoints drawn uniformly (no loops, no duplicates), weights reassigned at
+    random. Does NOT preserve degrees (that is the point: it is the second null beside the rewired one)."""
     rng = random.Random(seed)
     nodes = list(g_u.nodes)
     m = g_u.number_of_edges()

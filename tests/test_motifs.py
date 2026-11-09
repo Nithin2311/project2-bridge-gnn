@@ -21,7 +21,7 @@ def test_null_census_shape_and_z(synth):
     dg = nx.DiGraph()
     dg.add_edges_from([(u, v) for u, v in synth.graph.edges()][:40])
     out = motifs.null_census(dg, n=5, seed=0)
-    assert out.height == 16 and set(out.columns) == {"triad", "observed", "null_mean", "null_sd", "z"}
+    assert out.height == 16 and {"triad", "observed", "null_mean", "null_sd", "z", "p_emp"} <= set(out.columns)
     assert (out["observed"].sum()) == sum(motifs.triad_census(dg).values())
     zero_sd = out.filter(pl.col("null_sd") == 0)
     assert zero_sd["z"].is_null().all()
@@ -37,7 +37,7 @@ def test_null_census_is_seeded(synth):
 
 def test_feed_forward_middle_share():
     out = motifs.feed_forward_middle_share(ff(), {"B", "A", "C"})
-    get = lambda c: out.filter(pl.col("code") == c).row(0, named=True)  # noqa: E731
+    get = lambda c: out.filter(pl.col("code") == c).row(0, named=True)
     assert get("B")["n_middle"] == 1 and get("A")["n_middle"] == 0 and get("C")["n_middle"] == 0
     assert abs(get("B")["share_of_ff"] - 1.0) < 1e-9
 
@@ -76,3 +76,53 @@ def test_rewire_keeps_null_free_of_reciprocal_edges_when_input_is(synth):
     assert not any(dg.has_edge(v, u) for u, v in dg.edges())
     h = motifs._rewire(dg, 3)
     assert not any(h.has_edge(v, u) for u, v in h.edges())
+
+
+def _dg_from_synth(synth, k=60):
+    dg = nx.DiGraph()
+    dg.add_edges_from([(u, v) for u, v in synth.graph.edges()][:k])
+    return dg
+
+
+def test_rewire_restricted_to_allowed_pairs(synth):
+    dg = _dg_from_synth(synth)
+    allowed = {frozenset(e) for e in synth.graph.edges()}
+    h = motifs._rewire(dg, 0, allowed_pairs=allowed)
+    assert all(frozenset((u, v)) in allowed for u, v in h.edges())
+    assert dict(h.in_degree()) == dict(dg.in_degree()) and dict(h.out_degree()) == dict(dg.out_degree())
+
+
+def test_null_census_reports_both_nulls_and_hides_disconnected_z(synth):
+    dg = _dg_from_synth(synth)
+    allowed = {frozenset(e) for e in synth.graph.edges()}
+    out = motifs.null_census(dg, n=4, seed=0, allowed_pairs=allowed)
+    assert {"triad", "observed", "null_mean", "null_sd", "z", "p_emp", "null_u_mean", "null_u_sd", "z_u", "p_emp_u"} <= set(out.columns)
+    disc = out.filter(pl.col("triad").is_in(["003", "012", "102"]))
+    assert disc["z"].is_null().all() and disc["z_u"].is_null().all()
+    assert out.filter(pl.col("triad") == "030T")["p_emp"].is_not_null().all()
+
+
+def test_feed_forward_middle_into_core_columns():
+    g = nx.DiGraph()
+    g.add_edges_from([("A", "B"), ("B", "C"), ("A", "C"),     # chain into core code C, A not in core
+                      ("K", "B"), ("B", "C2"), ("K", "C2")])  # chain whose start K is a core member
+    cores = {"t": {"C", "C2", "K"}}
+    out = motifs.feed_forward_middle_share(g, {"B"}, cores)
+    r = out.row(0, named=True)
+    assert r["n_middle"] == 2 and r["n_middle_into_core_t"] == 1
+
+
+def test_bridge_chains_entry_variant_and_graph_flag():
+    fd_full = pl.DataFrame({"person_id": pl.Series([1, 1, 1, 2, 2, 2, 2], dtype=pl.Int64),
+                            "category": ["X", "N17", "I50", "X", "N17", "I50", "E11"],
+                            "first_date": [date(2018, 1, 1), date(2018, 3, 1), date(2018, 6, 1),
+                                           date(2018, 1, 1), date(2018, 3, 1), date(2018, 6, 1), date(2017, 6, 1)]})  # patient 2 already in core
+    out = motifs.bridge_chains(fd_full, {"N17"}, {"cardiometabolic": {"I50", "E11"}}, 30, 1, fd_full=fd_full, node_set={"N17", "I50"})
+    r = out.row(0, named=True)
+    assert (r["n_patients"], r["n_patients_entry"], r["a_in_graph"]) == (2, 1, False)
+
+
+def test_bridge_chains_gap_zero_is_strict():
+    fd = pl.DataFrame({"person_id": pl.Series([1, 1, 1], dtype=pl.Int64), "category": ["X", "N17", "I50"],
+                       "first_date": [date(2018, 1, 1), date(2018, 1, 1), date(2018, 6, 1)]})
+    assert motifs.bridge_chains(fd, {"N17"}, {"t": {"I50"}}, 0, 1).height == 0

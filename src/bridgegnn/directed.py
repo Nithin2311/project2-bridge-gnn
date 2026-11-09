@@ -29,7 +29,8 @@ def first_dates(pc: pl.DataFrame, split: pl.DataFrame, dev_splits: list[str], dr
 
 
 def precedence_counts(fd: pl.DataFrame, pairs: list[tuple[str, str]], gap_days: int) -> pl.DataFrame:
-    """Per pair (a, b) in the given order: n_ab (a precedes b by >= gap), n_ba, n_tie (both codes, |diff| < gap)."""
+    """Per pair (a, b) in the given order: n_ab (a precedes b by >= gap days), n_ba, n_tie (both codes, |diff| < gap).
+    With gap 0: strict precedence either way, same-day = tie."""
     pair_df = pl.DataFrame({"a": [p[0] for p in pairs], "b": [p[1] for p in pairs]})
     fa = fd.rename({"category": "a", "first_date": "da"})
     fb = fd.rename({"category": "b", "first_date": "db"})
@@ -87,11 +88,12 @@ def to_digraph(dedges: pl.DataFrame, g_u: nx.Graph) -> nx.DiGraph:
     return dg
 
 
-def summary(dedges: pl.DataFrame, g_u: nx.Graph, n_tested: int | None = None) -> dict:
+def summary(dedges: pl.DataFrame, g_u: nx.Graph, n_tested: int) -> dict:
+    """n_tested = pairs that reached the support floor; share_undetermined = tested pairs with no significant direction."""
     m = g_u.number_of_edges()
     return {"n_directed": dedges.height, "n_undirected": m, "share_directed": dedges.height / m if m else 0.0,
             "median_share": float(dedges["share"].median()) if dedges.height else float("nan"),
-            "n_tested": n_tested if n_tested is not None else dedges.height}
+            "n_tested": n_tested, "share_undetermined": (1 - dedges.height / n_tested) if n_tested else float("nan")}
 
 
 def edges_into_cores(dedges: pl.DataFrame, cores: dict[str, set[str]], top_k: int) -> pl.DataFrame:
