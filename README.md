@@ -48,11 +48,11 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 
 | Step | Script | Owner |
 |---|---|---|
-| 00 | `00_check_inputs.py` — P1 outputs present, DuckDB tables, class balance | N |
-| 01 | `01_rows.py` — label rows + per-row code sets with windows and target masks | N |
+| 00 | `00_check_inputs.py` — P1 outputs present, DuckDB tables, class balance | N (done) |
+| 01 | `01_rows.py` — label rows + per-row code sets with windows and target masks; ~4 min | N (done) |
 | 02 | `02_features.py` — node feature matrix, bags, pooled features, artifacts | D |
-| 03 | `03_directed_layer.py` — directed precedence edges, BH edges, null graphs | N |
-| 04 | `04_motifs.py` — triad census vs rewired nulls, bridge chains | N |
+| 03 | `03_directed_layer.py` — directed precedence edges (+ gap / day-one sensitivities), U-bh edges, 5 rewired + 1 shuffled null graphs; ~10 s | N (done) |
+| 04 | `04_motifs.py` — triad census vs 100 directed rewirings, bridge middle shares, A -> bridge -> core chains; ~3 min | N (done) |
 | 05 | `05_baselines.py` — non-graph baselines, GroupKFold, refit, test once | D |
 | 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs | N + D |
 | 07 | `07_experiments.py` — drives the experiment grid | D |

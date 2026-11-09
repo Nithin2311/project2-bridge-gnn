@@ -27,6 +27,10 @@ SCHEMAS: dict[str, dict[str, pl.DataType]] = {
         **{f"masked_{t}": pl.Boolean for t in TARGETS},
     },
     "node_index": {"category": pl.Utf8, "idx": pl.Int32},
+    "edges_directed": {
+        "src": pl.Utf8, "dst": pl.Utf8, "n_fwd": pl.Int32, "n_rev": pl.Int32, "n_tie": pl.Int32,
+        "share": pl.Float64, "p_binom": pl.Float64, "q_bh": pl.Float64, "phi": pl.Float64,
+    },
     "tabular": {
         "person_id": pl.Int64, "index_date": pl.Date, "target": pl.Utf8, "split": pl.Utf8, "positive": pl.Boolean,
     },

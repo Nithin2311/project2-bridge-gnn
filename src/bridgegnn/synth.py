@@ -116,7 +116,7 @@ def make(seed: int = 0, n_patients: int = 60, n_categories: int = 30) -> SynthDa
     target_defs = pl.DataFrame(td_rows, schema=["target", "category", "name", "in_core", "in_core_0.8", "in_community", "in_chapter_block"], orient="row")
 
     g = nx.Graph()
-    g.add_nodes_from(node_cats)
+    g.add_nodes_from((c, {"name": f"Synthetic condition {c}", "chapter": chapters.get(c[0], "other")}) for c in node_cats)
     for i in range(n_nodes):
         for j in range(i + 1, n_nodes):
             if rng.random() < 0.3:
