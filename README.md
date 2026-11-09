@@ -34,7 +34,7 @@ docs/                     design, plans, contracts
 ## Setup
 
 ```bash
-uv sync --extra dev                                   # dev = pytest, ruff; add --extra gnn for torch + PyG (step 06)
+uv sync --extra dev --extra gnn                       # dev = pytest, ruff; gnn = torch + PyTorch Geometric (step 06)
 export EHRSHOT_DATA="/path/to/FinalProject/data"      # the 13 CSVs; default ../FinalProject/data
 uv run pytest -q                                      # synthetic tests, no data needed
 uv run python scripts/00_check_inputs.py              # verifies Project 1 outputs and the DuckDB cache
@@ -54,7 +54,7 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 | 03 | `03_directed_layer.py` — directed precedence edges (+ gap / day-one sensitivities), U-bh edges, 5 rewired + 1 shuffled null graphs; ~10 s | N (done) |
 | 04 | `04_motifs.py` — triad census vs 100 directed rewirings, bridge middle shares, A -> bridge -> core chains; ~3 min | N (done) |
 | 05 | `05_baselines.py` — non-graph baselines, GroupKFold, refit, test once | D |
-| 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs | N + D |
+| 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs; GroupKFold selection, refit, test once; all experiment flags; ~5 min per (arch, target) | N (done) |
 | 07 | `07_experiments.py` — drives the experiment grid | D |
 | 08 | `08_evaluate.py` — bootstrap CIs, calibration, plots, tables | N |
 | 09 | `09_pre2020_graph.py` — time-respecting rebuild + backtest | N |

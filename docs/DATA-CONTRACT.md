@@ -17,6 +17,7 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/rows.parquet` | step 01 (Nithin) | 02, 05, 06, 08 | `rows` |
 | `outputs/row_codes.parquet` | step 01 | 02, 06 | `row_codes` |
 | `outputs/features/node_index.csv` | step 02 (Dylan) | 06, 08 | `node_index` |
+| `outputs/features_xcheck/{node_index.csv,node_x.npy,feature_groups.json}` | step 06 via `nodefeat.build` (Nithin's cross-check of the node part of step 02) | 06 when `outputs/features/` is absent | same formats; 496 x 59 on real data (STRUCT 16, BRIDGE 9, CHAPTER 19, COMMUNITY 15) |
 | `outputs/features/node_x.npy` | step 02 | 06 | float32 `[n_nodes, n_features]`, rows in `node_index` order |
 | `outputs/features/feature_groups.json` | step 02 | 05, 06, 08 | `{group: [column names]}` for `STRUCT`, `BRIDGE`, `CHAPTER`, `COMMUNITY` (node columns) and `CODE`, `ALL`, `DEMO`, `UTIL`, `TEMP`, `POOL` (row columns) |
 | `outputs/features/tabular_{target}_{split}.parquet` | step 02 | 05 | `tabular` |
@@ -30,7 +31,8 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/motifs/bridge_chains.csv`, `fig_motif_z.pdf` | step 04 | report | recorded-order triples a -> bridge -> core code: `n_patients` (ordered with the gap on both steps), `n_patients_entry` (no code of that core before the bridge, judged before the day-one drop), `a_in_graph` (R/Z/O and sub-floor starts are flagged False). Not a statement about entry into the core unless the entry column is used. |
 | `outputs/predictions/{run_id}_{target}_seed{seed}.parquet` | 05, 06 | 08 | `predictions` |
 | `outputs/results/*.csv` | 05, 06, 07 | 08 | `results` |
-| `outputs/logs/*.log` | 05, 06, 07 | humans | free text |
+| `outputs/logs/06_{run_id}_{target}_seed{seed}.json` | 06 | report | `{"selection": [per-fold {train_loss, val_auprc}], "refit": {train_loss}, "best_params", "epochs", "dev_oof_auprc"}` |
+| `outputs/logs/*.log` | 05, 06, 07 | humans | free text; step 06 writes one JSON line per run start and per results row |
 
 ## Schemas
 
