@@ -68,19 +68,23 @@ def load_layer(args, cfg) -> tuple[nx.Graph | nx.DiGraph, bool]:
     return nx.read_graphml(out / "layers" / "null" / f"{args.null_graph}.graphml"), False
 
 
-def resolve_node_features(args, cfg) -> tuple[Path, pl.DataFrame, object, dict]:
+def resolve_node_features(args, cfg, dry_run: bool = False) -> tuple[Path, pl.DataFrame, object, dict]:
+    """--node-features-dir, else outputs/features/ (step 02) if present, else outputs/features_xcheck/ (built here).
+    A dry run never writes."""
     out = config.outputs_dir(cfg)
+    p1 = config.p1_outputs(cfg)
     if args.node_features_dir:
         d = Path(args.node_features_dir)
     elif (out / "features" / "node_x.npy").exists():
         d = out / "features"
     else:
         d = out / "features_xcheck"
-        if not (d / "node_x.npy").exists():
-            p1 = config.p1_outputs(cfg)
-            idx, X, groups = nodefeat.build(pl.read_csv(p1 / "p2" / "node_features.csv"), pl.read_csv(p1 / "bridges.csv"), contract.TARGETS)
+    if (d / "node_x.npy").exists():
+        idx, X, groups = nodefeat.read(d)   # validates node_columns against the matrix
+    else:
+        idx, X, groups = nodefeat.build(pl.read_csv(p1 / "p2" / "node_features.csv"), pl.read_csv(p1 / "bridges.csv"), contract.TARGETS)
+        if not dry_run:
             nodefeat.write(idx, X, groups, d)
-    idx, X, groups = nodefeat.read(d)
     return d, idx, X, groups
 
 
@@ -102,11 +106,16 @@ def main(argv=None):
     bad = set(features) - set(ALL_FEATURES)
     if bad:
         sys.exit(f"unknown feature groups {sorted(bad)}")
+    if (args.layer == "N") != (args.null_graph != "none"):
+        sys.exit("--layer N and --null-graph must be used together")
     directed = args.layer == "D"
     symmetrise = directed and args.arch == "gcn"
+    weights_used = bool(args.weighted) and args.arch == "gcn"
+    if args.weighted and args.arch != "gcn":
+        print(f"note: --weighted 1 has no effect for {args.arch} (SAGEConv/GATConv ignore edge weights); weights_used=false", file=sys.stderr)
     out = config.outputs_dir(cfg)
     p1 = config.p1_outputs(cfg)
-    nf_dir, node_index, X, groups = resolve_node_features(args, cfg)
+    nf_dir, node_index, X, groups = resolve_node_features(args, cfg, dry_run=args.dry_run)
     drop = set()
     if args.drop_codes == "bridge":
         drop = nodefeat.bflag_codes(pl.read_csv(p1 / "p2" / "node_features.csv"), pl.read_csv(p1 / "bridges.csv"), args.target)
@@ -115,13 +124,13 @@ def main(argv=None):
     fc = data.feature_columns(groups, features)
     cov_names = data.covariate_names(features)
     in_dim = fc["n_static"] + fc["n_temp"] + len(fc["flags"])
-    model_kwargs = dict(arch=args.arch, in_dim=in_dim, cov_dim=len(cov_names), hidden=args.hidden, depth=args.depth,
-                        dropout=float(cfg["gnn"]["dropout"]), heads=args.heads, agg=args.agg, n_nodes=node_index.height,
-                        embedding_dim=int(cfg["gnn"]["embedding_dim"]), use_embedding="CODE" in features)
+    model_kwargs = {"arch": args.arch, "in_dim": in_dim, "cov_dim": len(cov_names), "hidden": args.hidden, "depth": args.depth,
+                        "dropout": float(cfg["gnn"]["dropout"]), "heads": args.heads, "agg": args.agg, "n_nodes": node_index.height,
+                        "embedding_dim": int(cfg["gnn"]["embedding_dim"]), "use_embedding": "CODE" in features}
     grid = [{"lr": float(lr), "weight_decay": float(wd)} for lr in cfg["gnn"]["lr_grid"] for wd in cfg["gnn"]["weight_decay_grid"]]
     flags = {k: v for k, v in vars(args).items() if k not in {"dry_run", "seeds"}}
-    flags.update({"features": ",".join(features), "symmetrise": symmetrise, "node_features_dir": str(nf_dir),
-                  "drop_codes_n": len(drop), "quick": bool(args.quick)})
+    flags.update({"features": ",".join(features), "symmetrise": symmetrise, "weights_used": weights_used,
+                  "node_features_dir": str(nf_dir), "drop_codes_n": len(drop), "quick": bool(args.quick)})
     resolved = {"flags": flags, "model_kwargs": model_kwargs, "grid": grid, "cov_names": cov_names, "seeds": args.seeds,
                 "family": family_for(args.run_id), "gnn_cfg": {k: v for k, v in cfg["gnn"].items() if k != "quick"}}
     if args.dry_run:
@@ -142,7 +151,8 @@ def main(argv=None):
     with open(log, "a") as fh:
         fh.write(json.dumps({"started": time.strftime("%Y-%m-%d %H:%M:%S"), **resolved}, default=str) + "\n")
     print(f"{args.run_id} {args.target} {args.arch} layer {args.layer}: {len(dev_all):,} dev rows, {len(test):,} test rows, "
-          f"node features {nf_dir.name} ({X.shape[1]} cols), in_dim {in_dim}, cov {len(cov_names)}, grid {len(grid)}  ({time.time()-t0:.0f}s)", flush=True)
+          f"node features {nf_dir.name} ({X.shape[1]} cols), in_dim {in_dim}, cov {len(cov_names)}, grid {len(grid)}  ({time.time()-t0:.0f}s)",
+          file=sys.stderr, flush=True)
 
     def run_seeds(dev, seeds):
         return train.run(args.run_id, args.target, dev, test, grid, seeds, cfg, model_kwargs, flags, out, cov_names, family=resolved["family"])
@@ -160,7 +170,7 @@ def main(argv=None):
         print(json.dumps(line, default=float), flush=True)
         with open(log, "a") as fh:
             fh.write(json.dumps(r, default=str) + "\n")
-    print(f"done in {time.time()-t0:.0f}s", flush=True)
+    print(f"done in {time.time()-t0:.0f}s", file=sys.stderr, flush=True)
     return 0
 
 

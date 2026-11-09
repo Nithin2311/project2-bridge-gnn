@@ -45,15 +45,29 @@ def _auprc(y: np.ndarray, p: np.ndarray) -> float | None:
 
 
 @torch.no_grad()
-def predict(model: SubgraphGNN, examples: list[Example], batch_size: int = 256) -> np.ndarray:
+def predict(model: SubgraphGNN, examples: list[Example], batch_size: int = 256, prior_correct: bool = True) -> np.ndarray:
+    """Probabilities. With prior_correct, the logit shift induced by pos_weight (log(n_neg/n_pos) on the fitting rows)
+    is removed so probabilities sit on the prevalence scale; ranking metrics are unchanged, Brier becomes meaningful."""
     if not examples:
         return np.zeros(0, np.float64)
     model.eval()
+    shift = float(getattr(model, "logit_shift", 0.0)) if prior_correct else 0.0
     out = np.zeros(len(examples), np.float64)
     for batch in _loader(examples, batch_size, shuffle=False, seed=0):
         logits = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
-        out[batch.row_pos.numpy()] = torch.sigmoid(logits).numpy()
+        out[batch.row_pos.numpy()] = torch.sigmoid(logits - shift).numpy()
     return out
+
+
+@torch.no_grad()
+def _val_loss(model: SubgraphGNN, examples: list[Example], loss_fn, batch_size: int = 256) -> float:
+    model.eval()
+    total, n = 0.0, 0
+    for batch in _loader(examples, batch_size, shuffle=False, seed=0):
+        logits = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
+        total += loss_fn(logits, batch.y).item() * batch.num_graphs
+        n += batch.num_graphs
+    return total / max(n, 1)
 
 
 def fit(train_ex: list[Example], val_ex: list[Example], params: dict, seed: int, cfg_gnn: dict,
@@ -65,12 +79,13 @@ def fit(train_ex: list[Example], val_ex: list[Example], params: dict, seed: int,
     y = np.array([e.y for e in train_ex], dtype=np.float64)
     n_pos, n_neg = y.sum(), len(y) - y.sum()
     pos_weight = torch.tensor([n_neg / n_pos if n_pos > 0 else 1.0], dtype=torch.float32)
+    model.logit_shift = float(np.log(n_neg / n_pos)) if n_pos > 0 and n_neg > 0 else 0.0
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     loader = _loader(train_ex, int(cfg_gnn["batch_size"]), shuffle=True, seed=seed)
     max_epochs = int(params["epochs"]) if not val_ex else int(cfg_gnn["max_epochs"])
     patience = int(cfg_gnn["patience"])
     yv = np.array([e.y for e in val_ex], dtype=np.int64) if val_ex else None
-    curves = {"train_loss": [], "val_auprc": []}
+    curves = {"train_loss": [], "val_auprc": [], "val_loss": []}
     best_score, best_epoch, best_state, stale = -np.inf, 0, None, 0
     for epoch in range(1, max_epochs + 1):
         model.train()
@@ -87,6 +102,7 @@ def fit(train_ex: list[Example], val_ex: list[Example], params: dict, seed: int,
         if val_ex:
             score = _auprc(yv, predict(model, val_ex))
             curves["val_auprc"].append(score)
+            curves["val_loss"].append(_val_loss(model, val_ex, loss_fn))
             s = -1.0 if score is None else score
             if s > best_score:
                 best_score, best_epoch, best_state, stale = s, epoch, copy.deepcopy(model.state_dict()), 0
@@ -111,9 +127,12 @@ def group_folds(examples: list[Example], n_folds: int, seed: int) -> list[tuple[
 
 
 def select(dev_ex: list[Example], grid: list[dict], cfg: dict, model_kwargs: dict, seed: int,
-           cov_names: list[str]) -> tuple[dict, float | None, np.ndarray, int, list]:
+           cov_names: list[str]) -> tuple[dict, float | None, np.ndarray, int, list, list]:
+    """Returns (best_params, best_score, oof, mean_best_epoch, best_fold_curves, grid_log); grid_log has one entry per
+    grid point with its fold scores and epochs (DESIGN section 7: every grid point is reported)."""
     folds = group_folds(dev_ex, int(cfg["split"]["cv_folds"]), seed)
     best = None
+    grid_log = []
     for params in grid:
         oof = np.full(len(dev_ex), np.nan)
         scores, epochs, curves = [], [], []
@@ -137,11 +156,12 @@ def select(dev_ex: list[Example], grid: list[dict], cfg: dict, model_kwargs: dic
             epochs.append(be)
             curves.append(cv)
         score = float(np.mean([s for s in scores if s is not None])) if scores else None
-        mean_epoch = int(round(float(np.mean(epochs)))) if epochs else 1
+        mean_epoch = round(float(np.mean(epochs))) if epochs else 1
+        grid_log.append({"params": params, "fold_scores": scores, "fold_epochs": epochs, "mean_score": score, "mean_epoch": max(mean_epoch, 1)})
         cand = (params, score, oof, max(mean_epoch, 1), curves)
         if best is None or (score is not None and (best[1] is None or score > best[1])):
             best = cand
-    return best
+    return (*best, grid_log)
 
 
 def _metrics(y: np.ndarray, p: np.ndarray) -> dict:
@@ -166,7 +186,7 @@ def run(run_id: str, target: str, dev_ex: list[Example], test_ex: list[Example],
     for sub in ["predictions", "results", "logs"]:
         (out_dir / sub).mkdir(parents=True, exist_ok=True)
     sel_seed = int(cfg["gnn"].get("selection_seed", 0))
-    best_params, best_score, oof, epochs, fold_curves = select(dev_ex, grid, cfg, model_kwargs, sel_seed, cov_names)
+    best_params, best_score, oof, epochs, fold_curves, grid_log = select(dev_ex, grid, cfg, model_kwargs, sel_seed, cov_names)
     y_test = np.array([e.y for e in test_ex], dtype=np.int64)
     results = []
     for seed in seeds:
@@ -184,13 +204,13 @@ def run(run_id: str, target: str, dev_ex: list[Example], test_ex: list[Example],
             "p": pl.Series(np.concatenate([oof, p_test]).astype(np.float64), dtype=pl.Float64)})
         contract.write(preds, out_dir / "predictions" / f"{run_id}_{target}_seed{seed}.parquet", "predictions")
         (out_dir / "logs" / f"06_{run_id}_{target}_seed{seed}.json").write_text(json.dumps(
-            {"selection": fold_curves, "refit": refit_curves, "best_params": best_params, "epochs": epochs,
-             "dev_oof_auprc": best_score}, default=float))
+            {"selection": fold_curves, "refit": refit_curves, "grid": grid_log, "best_params": best_params, "epochs": epochs,
+             "dev_oof_auprc": best_score, "prob_correction": "prior_shift"}, default=float))
         m = _metrics(y_test, p_test) if len(test_ex) else {"test_auroc": float("nan"), "test_auprc": float("nan"),
                                                            "test_brier": float("nan"), "n_test_rows": 0, "n_test_pos": 0}
         row = {"run_id": run_id, "family": family, "model": flags.get("arch", model_kwargs.get("arch", "")), "target": target,
                "seed": int(seed), "layer": flags.get("layer", "U"), "features": flags.get("features", ""),
-               "params_json": json.dumps({**flags, **best_params, "epochs": epochs}, default=str),
+               "params_json": json.dumps({**flags, **best_params, "epochs": epochs, "prob_correction": "prior_shift"}, default=str),
                "dev_oof_auprc": best_score if best_score is not None else float("nan"), **m}
         _upsert_results(out_dir / "results" / "gnn.csv", row)
         results.append(row)

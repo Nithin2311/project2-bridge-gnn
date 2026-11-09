@@ -19,7 +19,7 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/features/node_index.csv` | step 02 (Dylan) | 06, 08 | `node_index` |
 | `outputs/features_xcheck/{node_index.csv,node_x.npy,feature_groups.json}` | step 06 via `nodefeat.build` (Nithin's cross-check of the node part of step 02) | 06 when `outputs/features/` is absent | same formats; 496 x 59 on real data (STRUCT 16, BRIDGE 9, CHAPTER 19, COMMUNITY 15) |
 | `outputs/features/node_x.npy` | step 02 | 06 | float32 `[n_nodes, n_features]`, rows in `node_index` order |
-| `outputs/features/feature_groups.json` | step 02 | 05, 06, 08 | `{group: [column names]}` for `STRUCT`, `BRIDGE`, `CHAPTER`, `COMMUNITY` (node columns) and `CODE`, `ALL`, `DEMO`, `UTIL`, `TEMP`, `POOL` (row columns) |
+| `outputs/features/feature_groups.json` | step 02 | 05, 06, 08 | `{group: [column names]}` for `STRUCT`, `BRIDGE`, `CHAPTER`, `COMMUNITY` (node columns) and `CODE`, `ALL`, `DEMO`, `UTIL`, `TEMP`, `POOL` (row columns), PLUS the key **`node_columns`**: the full ordered list of column names of `node_x.npy`. Step 06 selects node groups by name through `node_columns` and refuses a file without it, so the physical column order is free. |
 | `outputs/features/tabular_{target}_{split}.parquet` | step 02 | 05 | `tabular` |
 | `outputs/artifacts/*.csv`, `construction_thresholds.json` | step 02 | report | aggregate deliverables (rubric) |
 | `outputs/layers/edges_directed.csv` (+ `_g0`, `_g90`, `_incl_dayone` sensitivities) | step 03 (Nithin) | 06, 08, report | `edges_directed` |
@@ -31,7 +31,7 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/motifs/bridge_chains.csv`, `fig_motif_z.pdf` | step 04 | report | recorded-order triples a -> bridge -> core code: `n_patients` (ordered with the gap on both steps), `n_patients_entry` (no code of that core before the bridge, judged before the day-one drop), `a_in_graph` (R/Z/O and sub-floor starts are flagged False). Not a statement about entry into the core unless the entry column is used. |
 | `outputs/predictions/{run_id}_{target}_seed{seed}.parquet` | 05, 06 | 08 | `predictions` |
 | `outputs/results/*.csv` | 05, 06, 07 | 08 | `results` |
-| `outputs/logs/06_{run_id}_{target}_seed{seed}.json` | 06 | report | `{"selection": [per-fold {train_loss, val_auprc}], "refit": {train_loss}, "best_params", "epochs", "dev_oof_auprc"}` |
+| `outputs/logs/06_{run_id}_{target}_seed{seed}.json` | 06 | report | `{"selection": [per-fold {train_loss, val_auprc, val_loss}] for the winning grid point, "grid": [every grid point with fold_scores, fold_epochs, mean_score], "refit": {train_loss}, "best_params", "epochs", "dev_oof_auprc", "prob_correction": "prior_shift"}` |
 | `outputs/logs/*.log` | 05, 06, 07 | humans | free text; step 06 writes one JSON line per run start and per results row |
 
 ## Schemas
@@ -100,7 +100,7 @@ target), `all_` (bag over every category with >= 10 development rows, masked), `
 | index_date | Date |
 | split | Utf8 (dev rows carry out-of-fold predictions; test rows carry the refit model's) |
 | y | Boolean |
-| p | Float64 |
+| p | Float64 (step 06: prior-corrected, i.e. the pos_weight logit shift removed, so Brier and calibration are on the prevalence scale; ranking unchanged) |
 
 ### `results` — one row per (run, target, seed)
 
@@ -121,7 +121,7 @@ target), `all_` (bag over every category with >= 10 development rows, masked), `
 | CODE | row | `c_<cat>` for the 496 main-graph nodes |
 | ALL | row | `all_<cat>` for every category with >= 10 development rows |
 | DEMO | row | `demo_age`, `demo_female` |
-| UTIL | row | `util_n_codes`, `util_n_rows`, `util_n_visit_days`, `util_days_since_first_dx`, `util_index_year` |
+| UTIL | row | `util_n_codes` (unmasked main-graph codes in the ACTIVE lookback window), `util_n_rows` (records in the 1,095-day window), `util_n_visit_days`, `util_days_since_first_dx`, `util_index_year`; the GNN uses exactly these five, and under `--drop-codes bridge` both counts exclude the dropped codes |
 | TEMP | row (aggregate) and node (per code, step 06) | `temp_min_days_since_last`, `temp_mean_days_since_last`, `temp_share_recent`; per-node: days since last / first recording, recent flag |
 | STRUCT | node | Project 1 structural measures (degree, strength, betweenness, closeness, eigenvector, PageRank, participation, within-module z, degree residual, inpatient share, CCIR chronic share, mean age, female share, backbone degree) plus chapter and community one-hots |
 | BRIDGE | node and row | node: `bridge_flag`, `bridge_flag_<target>`, `bridge_score_<target>`; row: `bridge_n_flag`, `bridge_sum_score`, `bridge_max_score` |

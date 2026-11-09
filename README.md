@@ -54,7 +54,7 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 | 03 | `03_directed_layer.py` — directed precedence edges (+ gap / day-one sensitivities), U-bh edges, 5 rewired + 1 shuffled null graphs; ~10 s | N (done) |
 | 04 | `04_motifs.py` — triad census vs 100 directed rewirings, bridge middle shares, A -> bridge -> core chains; ~3 min | N (done) |
 | 05 | `05_baselines.py` — non-graph baselines, GroupKFold, refit, test once | D |
-| 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs; GroupKFold selection, refit, test once; all experiment flags; ~5 min per (arch, target) | N (done) |
+| 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs; GroupKFold selection, refit, test once; all experiment flags; 25-135 s per (arch, target) on the M4 | N (done) |
 | 07 | `07_experiments.py` — drives the experiment grid | D |
 | 08 | `08_evaluate.py` — bootstrap CIs, calibration, plots, tables | N |
 | 09 | `09_pre2020_graph.py` — time-respecting rebuild + backtest | N |

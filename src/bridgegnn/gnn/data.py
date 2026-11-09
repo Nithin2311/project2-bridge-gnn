@@ -17,8 +17,9 @@ import polars as pl
 FEATURE_GROUPS = ["CODE", "DEMO", "UTIL", "TEMP", "STRUCT", "BRIDGE"]
 STATIC_FOR = {"STRUCT": ["STRUCT", "CHAPTER", "COMMUNITY"], "BRIDGE": ["BRIDGE"]}
 DEMO_NAMES = ["demo_age", "demo_female"]
-UTIL_NAMES = ["util_n_codes_lb365", "util_n_codes_lb1095", "util_n_codes_lball", "util_n_rows_lb1095",
-              "util_n_visit_days_365", "util_days_since_first_dx", "util_index_year"]
+UTIL_NAMES = ["util_n_codes", "util_n_rows", "util_n_visit_days", "util_days_since_first_dx", "util_index_year"]
+# util_n_codes = unmasked main-graph codes in the ACTIVE lookback window; util_n_rows = records in the 1,095-day window
+# (the contract's single utilisation proxy); both exclude dropped codes.
 UNSCALED = {"demo_female"}
 N_TEMP = 3
 N_FLAGS = 2
@@ -59,16 +60,14 @@ def covariate_names(features: list[str]) -> list[str]:
 
 
 def static_columns(groups: dict[str, list[str]], features: list[str]) -> list[int]:
-    """Indices into X (column order = STRUCT, BRIDGE, CHAPTER, COMMUNITY as written by nodefeat)."""
-    order = ["STRUCT", "BRIDGE", "CHAPTER", "COMMUNITY"]
-    offsets, off = {}, 0
-    for gname in order:
-        offsets[gname] = off
-        off += len(groups.get(gname, []))
+    """Indices into X selected BY NAME through groups['node_columns'] (never by position)."""
+    cols = groups["node_columns"]
+    pos = {c: i for i, c in enumerate(cols)}
     wanted = []
     for f in features:
         for gname in STATIC_FOR.get(f, []):
-            wanted += list(range(offsets[gname], offsets[gname] + len(groups.get(gname, []))))
+            for c in groups.get(gname, []):
+                wanted.append(pos[c])
     return wanted
 
 
@@ -96,17 +95,22 @@ def build_examples(rows_t: pl.DataFrame, row_codes: pl.DataFrame, target: str, n
     cov_names = covariate_names(opts.features)
     drop = set(opts.drop_codes)
 
-    keep = (pl.col("in_main_graph") & ~pl.col(f"masked_{target}") & _window_filter(opts.lookback))
-    rc = row_codes.filter(keep).select("person_id", "index_date", "category", "days_since_last", "days_since_first",
-                                       "in_lb365", "in_lb1095")
+    masked_set = set(row_codes.filter(pl.col(f"masked_{target}"))["category"].to_list())
+    eligible = row_codes.filter(pl.col("in_main_graph") & ~pl.col(f"masked_{target}")).select(
+        "person_id", "index_date", "category", "days_since_last", "days_since_first", "in_lb365", "in_lb1095", "n_rec_lb1095")
     dropped_counts = {}
     if drop:
-        d = rc.filter(pl.col("category").is_in(list(drop)))
-        dc = d.group_by("person_id", "index_date").agg(pl.col("in_lb365").sum().alias("d365"),
-                                                       pl.col("in_lb1095").sum().alias("d1095"), pl.len().alias("dall"))
+        # counted BEFORE the window filter so every UTIL count can be corrected whatever the active lookback
+        d = eligible.filter(pl.col("category").is_in(list(drop)))
+        dc = d.group_by("person_id", "index_date").agg(pl.col("in_lb365").sum().alias("d365"), pl.col("in_lb1095").sum().alias("d1095"),
+                                                       pl.len().alias("dall"), pl.col("n_rec_lb1095").sum().alias("drows"))
         dropped_counts = {(r["person_id"], r["index_date"]): r for r in dc.iter_rows(named=True)}
-        rc = rc.filter(~pl.col("category").is_in(list(drop)))
+        eligible = eligible.filter(~pl.col("category").is_in(list(drop)))
+    rc = eligible.filter(_window_filter(opts.lookback))
     per_row = {(k[0], k[1]): grp for k, grp in rc.group_by("person_id", "index_date")}
+    excluded_from_context = masked_set | drop
+    n_codes_col = {365: "n_codes_lb365", 1095: "n_codes_lb1095", 0: "n_codes_lball"}[opts.lookback]
+    d_col = {365: "d365", 1095: "d1095", 0: "dall"}[opts.lookback]
 
     def nbrs(u: str) -> set[str]:
         if opts.directed:
@@ -152,7 +156,7 @@ def build_examples(rows_t: pl.DataFrame, row_codes: pl.DataFrame, target: str, n
             for u in codes:
                 if u in g_layer:
                     ctx |= nbrs(u)
-            context = sorted((c for c in ctx if c not in cs and c in cat2idx), key=lambda c: cat2idx[c])
+            context = sorted((c for c in ctx if c not in cs and c in cat2idx and c not in excluded_from_context), key=lambda c: cat2idx[c])
         nodes = codes + context
         if nodes:
             ids = np.array([cat2idx[c] for c in nodes], dtype=np.int64)
@@ -176,10 +180,9 @@ def build_examples(rows_t: pl.DataFrame, row_codes: pl.DataFrame, target: str, n
         if "DEMO" in opts.features:
             cov_vals += [float(r["age_at_index"]), 1.0 if r["sex"] == "female" else 0.0]
         if "UTIL" in opts.features:
-            dcnt = dropped_counts.get(key, {"d365": 0, "d1095": 0, "dall": 0})
-            cov_vals += [float(r["n_codes_lb365"] - dcnt["d365"]), float(r["n_codes_lb1095"] - dcnt["d1095"]),
-                         float(r["n_codes_lball"] - dcnt["dall"]), float(r["n_rows_lb1095"]), float(r["n_visit_days_365"]),
-                         float(r["days_since_first_dx"]), float(r["index_year"])]
+            dcnt = dropped_counts.get(key, {"d365": 0, "d1095": 0, "dall": 0, "drows": 0})
+            cov_vals += [float(r[n_codes_col] - dcnt[d_col]), float(r["n_rows_lb1095"] - dcnt["drows"]),
+                         float(r["n_visit_days_365"]), float(r["days_since_first_dx"]), float(r["index_year"])]
         assert len(cov_vals) == len(cov_names)
         out.append(Example(x=x, edge_index=ei, edge_weight=ew, node_ids=ids, cov=np.array(cov_vals, np.float32),
                            y=int(bool(r["positive"])), person_id=int(r["person_id"]), index_date=r["index_date"], split=r["split"]))

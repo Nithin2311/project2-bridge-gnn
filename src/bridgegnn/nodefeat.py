@@ -70,13 +70,20 @@ def build(node_features: pl.DataFrame, bridges: pl.DataFrame, targets: list[str]
     blocks.append(np.array([[1.0 if cm == b else 0.0 for b in big] + [0.0 if cm in big else 1.0] for cm in comm]))
 
     X = np.concatenate(blocks, axis=1)
+    groups["node_columns"] = groups["STRUCT"] + groups["BRIDGE"] + groups["CHAPTER"] + groups["COMMUNITY"]
     col_mean = np.nanmean(X, axis=0)
     inds = np.where(np.isnan(X))
     X[inds] = np.take(col_mean, inds[1])
     if standardise:
-        mu, sd = X.mean(axis=0), X.std(axis=0)
-        sd[sd == 0] = 1.0
-        X = (X - mu) / sd
+        # binaries (flags, one-hots) stay 0/1; heavy-tailed bridge scores are log1p-compressed first; the rest z-scored
+        for j, name in enumerate(groups["node_columns"]):
+            col = X[:, j]
+            if set(np.unique(col).tolist()) <= {0.0, 1.0}:
+                continue
+            if name.startswith("bridge_score_"):
+                col = np.log1p(col * 1000.0)   # restricted betweenness values are ~1e-4..1e-2
+            sd = col.std()
+            X[:, j] = (col - col.mean()) / (sd if sd > 0 else 1.0)
     node_index = pl.DataFrame({"category": cats, "idx": pl.Series(list(range(len(cats))), dtype=pl.Int32)})
     return node_index, X.astype(np.float32), groups
 
@@ -96,5 +103,14 @@ def read(d: Path) -> tuple[pl.DataFrame, np.ndarray, dict]:
     idx = cread(d / "node_index.csv", "node_index")
     X = np.load(d / "node_x.npy")
     groups = json.loads((d / "feature_groups.json").read_text())
+    if "node_columns" not in groups:
+        raise ValueError(f"{d}/feature_groups.json lacks 'node_columns' (the full column order of node_x.npy); "
+                         "step 06 selects feature groups by name and refuses to guess the layout")
+    if len(groups["node_columns"]) != X.shape[1]:
+        raise ValueError(f"node_columns has {len(groups['node_columns'])} names but node_x.npy has {X.shape[1]} columns")
+    for gname in ["STRUCT", "BRIDGE", "CHAPTER", "COMMUNITY"]:
+        missing = [c for c in groups.get(gname, []) if c not in groups["node_columns"]]
+        if missing:
+            raise ValueError(f"group {gname} names columns absent from node_columns: {missing[:5]}")
     assert X.shape[0] == idx.height and list(SCHEMAS["node_index"]) == idx.columns
     return idx, X, groups

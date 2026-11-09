@@ -27,7 +27,7 @@ def built(synth, node_feats):
     opts = data.Options(layer="U", features=ALL, lookback=1095, expand=False, weighted=True, drop_codes=set(),
                         directed=False, symmetrise=False)
     rows_t = r.filter(pl.col("target") == "mental_health")
-    return dict(rows_t=rows_t, rc=rc, node_index=node_index, X=X, groups=groups, g=synth.graph, opts=opts)
+    return {"rows_t": rows_t, "rc": rc, "node_index": node_index, "X": X, "groups": groups, "g": synth.graph, "opts": opts}
 
 
 def ex(b, **kw):
@@ -38,7 +38,7 @@ def ex(b, **kw):
 def test_example_count_and_shapes(built):
     exs = ex(built)
     assert len(exs) == built["rows_t"].height
-    n_static = sum(len(v) for v in built["groups"].values())
+    n_static = len(built["groups"]["node_columns"])
     e = exs[0]
     assert e.x.shape[1] == n_static + 3 + 2 and e.x.dtype == np.float32
     assert e.edge_index.shape[0] == 2 and e.edge_index.dtype == np.int64 and e.edge_weight.shape[0] == e.edge_index.shape[1]
@@ -53,17 +53,53 @@ def test_masked_codes_never_appear(built):
         assert not ({cat_of[i] for i in e.node_ids if i >= 0} & masked)
 
 
-def test_dropped_codes_absent_and_util_adjusted(built):
-    exs0 = ex(built)
-    big = max(exs0, key=lambda e: e.x.shape[0])
+@pytest.mark.parametrize("lookback", [365, 1095, 0])
+def test_dropped_codes_absent_and_util_adjusted_for_every_window(built, lookback):
     cat_of = dict(zip(built["node_index"]["idx"], built["node_index"]["category"]))
+    exs0 = ex(built, lookback=lookback)
+    big = max(exs0, key=lambda e: e.x.shape[0])
     victim = cat_of[int(big.node_ids[0])]
-    exs1 = ex(built, drop_codes={victim})
+    exs1 = ex(built, lookback=lookback, drop_codes={victim})
     e1 = next(e for e in exs1 if e.person_id == big.person_id and e.index_date == big.index_date)
     assert victim not in {cat_of[i] for i in e1.node_ids if i >= 0}
     names = data.covariate_names(ALL)
-    k = names.index("util_n_codes_lb1095")
-    assert e1.cov[k] == big.cov[k] - 1
+    k = names.index("util_n_codes")
+    rc = built["rc"].filter((pl.col("person_id") == big.person_id) & (pl.col("index_date") == big.index_date)
+                            & (pl.col("category") == victim)).row(0, named=True)
+    in_window = {365: rc["in_lb365"], 1095: rc["in_lb1095"], 0: True}[lookback]
+    assert e1.cov[k] == big.cov[k] - (1 if in_window else 0)
+    kr = names.index("util_n_rows")
+    assert e1.cov[kr] == big.cov[kr] - rc["n_rec_lb1095"]
+
+
+def test_util_names_match_contract_and_lookback(built):
+    assert data.covariate_names(["UTIL"]) == ["util_n_codes", "util_n_rows", "util_n_visit_days", "util_days_since_first_dx", "util_index_year"]
+    e365 = ex(built, lookback=365)[0]; e1095 = ex(built, lookback=1095)[0]
+    r = built["rows_t"].row(0, named=True)
+    k = data.covariate_names(ALL).index("util_n_codes")
+    assert e365.cov[k] == r["n_codes_lb365"] and e1095.cov[k] == r["n_codes_lb1095"]
+
+
+def test_expand_excludes_masked_and_dropped_codes(built):
+    cat_of = dict(zip(built["node_index"]["idx"], built["node_index"]["category"]))
+    masked = set(built["rc"].filter(pl.col("masked_mental_health"))["category"])
+    victim = next(iter(set(built["node_index"]["category"]) - masked))
+    for e in ex(built, expand=True, drop_codes={victim}):
+        present = {cat_of[i] for i in e.node_ids if i >= 0}
+        assert not (present & masked) and victim not in present
+
+
+def test_static_columns_selected_by_name_not_position(built):
+    groups = built["groups"]
+    cols = groups["node_columns"]
+    perm = list(reversed(range(len(cols))))
+    groups_p = {k: v for k, v in groups.items() if k != "node_columns"} | {"node_columns": [cols[i] for i in perm]}
+    X_p = built["X"][:, perm]
+    e_ref = ex(built, features=["STRUCT"])[0]
+    e_perm = data.build_examples(built["rows_t"], built["rc"], "mental_health", built["node_index"], X_p, groups_p, built["g"],
+                                 replace(built["opts"], features=["STRUCT"]), CFG)[0]
+    assert np.allclose(e_ref.x, e_perm.x)
+    assert data.static_columns(groups_p, ["BRIDGE"]) == [groups_p["node_columns"].index(c) for c in groups["BRIDGE"]]
 
 
 def test_code_only_features_leave_only_flags(built):
