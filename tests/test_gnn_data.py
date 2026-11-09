@@ -93,7 +93,7 @@ def test_directed_layer_symmetrised_only_for_gcn(built):
     dg = nx.DiGraph()
     dg.add_nodes_from(built["g"].nodes(data=True))
     dg.add_edge(a, b, weight=0.7)
-    pick = lambda exs: next(e for e in exs if e.person_id == e0.person_id and e.index_date == e0.index_date)  # noqa: E731
+    pick = lambda exs: next(e for e in exs if e.person_id == e0.person_id and e.index_date == e0.index_date)
     d = built | {"g": dg}
     e_dir = pick(data.build_examples(d["rows_t"], d["rc"], "mental_health", d["node_index"], d["X"], d["groups"], dg, replace(d["opts"], layer="D", directed=True), CFG))
     e_sym = pick(data.build_examples(d["rows_t"], d["rc"], "mental_health", d["node_index"], d["X"], d["groups"], dg, replace(d["opts"], layer="D", directed=True, symmetrise=True), CFG))

@@ -7,9 +7,9 @@ import pytest
 pytest.importorskip("torch")
 pytest.importorskip("torch_geometric")
 
-from bridgegnn import contract, inputs, nodefeat, rows  # noqa: E402
-from bridgegnn.contract import TARGETS  # noqa: E402
-from bridgegnn.gnn import data, train  # noqa: E402
+from bridgegnn import contract, inputs, nodefeat, rows
+from bridgegnn.contract import TARGETS
+from bridgegnn.gnn import data, train
 
 CFG = {"task": {"definition": "core", "horizon_months": 12, "exclude_censored": True},
        "windows": {"lookback_days": [365, 1095, 0], "primary_lookback": 1095, "era_start": "2015-10-01",

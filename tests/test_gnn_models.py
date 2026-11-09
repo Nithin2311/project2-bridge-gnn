@@ -4,10 +4,10 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("torch_geometric")
 
-from torch_geometric.loader import DataLoader  # noqa: E402
+from torch_geometric.loader import DataLoader
 
-from bridgegnn.gnn import models  # noqa: E402
-from bridgegnn.gnn.data import Example  # noqa: E402
+from bridgegnn.gnn import models
+from bridgegnn.gnn.data import Example
 
 
 def make_examples(n=8, n_nodes_total=20, f=5, cov=3, seed=0, virtual_only=False):

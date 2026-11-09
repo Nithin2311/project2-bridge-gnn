@@ -1,6 +1,5 @@
 import numpy as np
 import polars as pl
-import pytest
 
 from bridgegnn import nodefeat
 from bridgegnn.contract import TARGETS
