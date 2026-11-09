@@ -205,3 +205,19 @@ def apply_cov_scaler(examples: list[Example], mean: np.ndarray, sd: np.ndarray, 
     if not names:
         return examples
     return [replace(e, cov=((e.cov - mean) / sd).astype(np.float32)) for e in examples]
+
+
+def filter_rows(rows_t: pl.DataFrame, index_from: str | None, index_to: str | None, test_index_from: str | None) -> pl.DataFrame:
+    """Row windows for B5 and the temporal backtest (inclusive dates).
+    index_from applies to every row. index_to applies to every row, EXCEPT when test_index_from is given: then
+    index_to bounds the development rows and test_index_from bounds the test rows (train before, test after)."""
+    out = rows_t
+    is_test = pl.col("split") == "test"
+    if index_from:
+        out = out.filter(pl.col("index_date") >= dt.date.fromisoformat(index_from))
+    if index_to:
+        upper = pl.col("index_date") <= dt.date.fromisoformat(index_to)
+        out = out.filter(upper | is_test) if test_index_from else out.filter(upper)
+    if test_index_from:
+        out = out.filter(~is_test | (pl.col("index_date") >= dt.date.fromisoformat(test_index_from)))
+    return out

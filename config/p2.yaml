@@ -70,3 +70,16 @@ gnn:                         # step 06 (design section 7)
   selection_seed: 0          # hyperparameters are selected once per (run, target) on this seed, then refit per seed
   device: cpu                # subgraphs are tiny; CPU is deterministic and fast enough
   quick: {max_epochs: 5, patience: 2}   # --quick smoke runs
+
+eval:                        # step 08
+  n_bootstrap: 1000          # patient-level percentile bootstrap on test rows
+  seed: 0
+  min_stratum_pos: 10        # strata with fewer positives are reported as n/a
+  calib_bins: 10
+  baselines_for_pairing: [B-hgb_all, B-mlp_pool]   # paired GNN-vs-baseline deltas when these predictions exist (step 05)
+  paired_runs: [[B5-P, B5-U], [BT-P, BT-U]]        # explicit pairings on identical rows (time-respecting graph vs Layer U)
+
+rebuild:                     # step 09: time-respecting graph (design 5a, experiment B5) and the temporal backtest
+  cutoff: "2020-01-01"       # development records before this date rebuild the graph, cores, bridges, node features
+  backtest_train_to: "2019-12-31"
+  backtest_test_from: "2020-07-01"

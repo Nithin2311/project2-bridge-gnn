@@ -58,6 +58,9 @@ uv run python scripts/06_gnn.py --run-id A1a --target cardiometabolic --arch sag
 | `--null-graph` | none, rewire0 .. rewire4, shuffle (requires `--layer N`) | none |
 | `--drop-codes` | none, bridge (remove the target's B-flag codes from the subgraph and the UTIL code counts) | none |
 | `--node-features-dir` | directory with `node_index.csv`, `node_x.npy`, `feature_groups.json`; default `outputs/features/` (step 02) if present, else built into `outputs/features_xcheck/` from Project 1 files | auto |
+| `--layer-file` | graphml path; overrides `--layer`; recorded as `layer: file:<stem>`; direction read from the file | none |
+| `--index-from`, `--index-to` | inclusive index-date window applied to every row; when `--test-index-from` is also given, `--index-to` bounds development rows only | none |
+| `--test-index-from` | inclusive lower bound on test rows only (the temporal backtest's test window) | none |
 | `--quick` | smoke run with `gnn.quick` epochs and patience | off |
 | `--dry-run` | print the resolved configuration (flags, model kwargs, grid, node-feature dir, family) as JSON and exit 0 without importing torch | off |
 
@@ -97,3 +100,23 @@ template via `--subsample-file` to both steps, runs
 one subprocess per (experiment, target), logs to `outputs/logs/07_{id}_{target}.log`, continues on failure,
 and summarises exit codes. `--dry-run` prints the commands and exits 0 even when the target script does not
 exist yet.
+
+
+## Step 08 — evaluation (Nithin)
+
+```
+uv run python scripts/08_evaluate.py [--n-bootstrap N]
+```
+Reads every `outputs/predictions/*.parquet` and `outputs/rows.parquet`; writes `outputs/eval/tables/{runs,runs_agg,
+reliability,strata,paired}.csv`, `runs_agg.tex`, `paired.tex`, and `outputs/eval/figures/{roc_pr,reliability}_{target}.pdf`,
+`curves_<run>_<target>.pdf`. Paired deltas appear for every non-baseline run against each of
+`eval.baselines_for_pairing` whose predictions exist (step 05). Strata: sex, age band, subgraph-size bin, index year;
+fewer than `eval.min_stratum_pos` positives prints n/a.
+
+## Step 09 — pre-2020 rebuild and backtest (Nithin)
+
+```
+uv run python scripts/09_pre2020_graph.py [--skip-runs] [--arch sage] [--targets ...]
+```
+Builds `outputs/pre2020/` (graph, edges, cores, bridges, node features in nodefeat format, summary vs Layer U) from
+development records before `rebuild.cutoff`, then calls step 06 for `B5-U`, `B5-P`, `BT-U`, `BT-P` per primary target.

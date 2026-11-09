@@ -26,7 +26,11 @@ experiments:
   - {id: B3,  family: B, base: gnn, targets: primary, overrides: {weighted: 0, arch: gcn}, note: "unweighted edges; GCN only (SAGEConv/GATConv ignore edge weights, so B3 compares against G-gcn)"}
   - {id: B4a, family: B, base: gnn, targets: primary, overrides: {layer: U-bh}, note: "BH-FDR edge filter instead of Bonferroni"}
   - {id: B4b, family: B, base: gnn, targets: primary, overrides: {layer: U-bb}, note: "top-10 per-node backbone"}
-  # B5 (pre-2020 rebuilt graph) runs through scripts/09_pre2020_graph.py
+  # B5 and the temporal backtest run through scripts/09_pre2020_graph.py (listed here for the record; the driver skips base: script)
+  - {id: B5-U, family: B, base: script, targets: primary, overrides: {index-from: "2020-01-01"}, note: "Layer U, rows indexed >= 2020"}
+  - {id: B5-P, family: B, base: script, targets: primary, overrides: {layer-file: outputs/pre2020/graph.graphml, node-features-dir: outputs/pre2020/features, index-from: "2020-01-01"}, note: "pre-2020 graph + features, same rows"}
+  - {id: BT-U, family: backtest, base: script, targets: primary, overrides: {index-to: "2019-12-31", test-index-from: "2020-07-01"}, note: "temporal backtest on Layer U"}
+  - {id: BT-P, family: backtest, base: script, targets: primary, overrides: {layer-file: outputs/pre2020/graph.graphml, node-features-dir: outputs/pre2020/features, index-to: "2019-12-31", test-index-from: "2020-07-01"}, note: "temporal backtest on the pre-2020 graph"}
   - {id: B6a, family: B, base: gnn, targets: primary, overrides: {lookback: 365},  note: "1-year lookback"}
   - {id: B6b, family: B, base: gnn, targets: primary, overrides: {lookback: 0},    note: "all-history lookback"}
   - {id: B6c, family: B, base: gnn, targets: primary, overrides: {expand: 1},      note: "1-hop neighbour expansion"}
