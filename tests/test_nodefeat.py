@@ -6,21 +6,6 @@ from bridgegnn import nodefeat
 from bridgegnn.contract import TARGETS
 
 
-@pytest.fixture(scope="module")
-def node_feats(synth):
-    rng = np.random.default_rng(1)
-    n = synth.nodes.height
-    cats = synth.nodes["category"].to_list()
-    df = synth.nodes.select("category", "name", "chapter")
-    for c in nodefeat.STRUCT_COLS:
-        df = df.with_columns(pl.Series(c, rng.normal(size=n)))
-    df = df.with_columns(pl.Series("community_seed0", rng.choice([0, 1, 2, 7], size=n).tolist()),
-                         pl.Series("bridge_survivor", [c in cats[:2] for c in cats]))
-    # a null in one STRUCT column, as in the real file (ccir_chronic_share is null for unmapped categories)
-    vals = df["ccir_chronic_share"].to_list(); vals[0] = None
-    return df.with_columns(pl.Series("ccir_chronic_share", vals, dtype=pl.Float64))
-
-
 def test_build_shapes_and_groups(node_feats, synth):
     idx, X, groups = nodefeat.build(node_feats, synth.bridges, TARGETS)
     assert X.shape[0] == idx.height == synth.nodes.height and X.dtype == np.float32
