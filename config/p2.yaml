@@ -1,5 +1,5 @@
 # Project 2 — every parameter in one place, each with its reason. Change here, never in code.
-# Spec: docs/superpowers/specs/2026-11-06-project2-design.md
+# Spec: docs/DESIGN.md
 
 paths:
   p1_repo: ../project1-bridge-dx          # frozen Project 1 pipeline; imported as a path dependency (bridgedx)
