@@ -78,7 +78,7 @@ def test_to_digraph_and_tables(synth):
     dg = directed.to_digraph(de, g_u)
     assert dg.number_of_edges() == de.height
     assert all({"phi", "weight", "distance", "n_fwd"} <= set(d) for _, _, d in dg.edges(data=True))
-    assert dg.nodes["%s" % de["src"][0]].get("name")
+    assert dg.nodes["{}".format(de["src"][0])].get("name")
     cores = synth.targets["core"]
     into = directed.edges_into_cores(de, cores, top_k=5)
     assert {"target", "src", "dst", "n_fwd", "share", "q_bh"} <= set(into.columns)

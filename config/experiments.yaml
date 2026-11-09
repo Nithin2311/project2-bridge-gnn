@@ -23,7 +23,7 @@ experiments:
   # ---- B: graph structure ----
   - {id: B1,  family: B, base: gnn, targets: primary, overrides: {layer: D}, note: "directed precedence edges"}
   # B2 (bipartite HeteroGNN) runs through scripts/06b_hetero.py, not the driver
-  - {id: B3,  family: B, base: gnn, targets: primary, overrides: {weighted: 0}, note: "unweighted edges"}
+  - {id: B3,  family: B, base: gnn, targets: primary, overrides: {weighted: 0, arch: gcn}, note: "unweighted edges; GCN only (SAGEConv/GATConv ignore edge weights, so B3 compares against G-gcn)"}
   - {id: B4a, family: B, base: gnn, targets: primary, overrides: {layer: U-bh}, note: "BH-FDR edge filter instead of Bonferroni"}
   - {id: B4b, family: B, base: gnn, targets: primary, overrides: {layer: U-bb}, note: "top-10 per-node backbone"}
   # B5 (pre-2020 rebuilt graph) runs through scripts/09_pre2020_graph.py

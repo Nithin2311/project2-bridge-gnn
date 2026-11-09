@@ -54,3 +54,19 @@ motifs:                      # step 04
   seed: 0
   min_chain_patients: 10     # A -> bridge -> core-code chains need this many strictly ordered patients to be listed
   top_chains: 40
+
+gnn:                         # step 06 (design section 7)
+  hidden: 64                 # small graphs (median 11 nodes); 64 is plenty and keeps the fit fast
+  depth: 2                   # 3 in experiment E1
+  dropout: 0.3
+  heads: 4                   # GAT; 2 and 8 in E2
+  agg: mean                  # GraphSAGE; max in E2
+  batch_size: 64
+  lr_grid: [0.001, 0.0003]
+  weight_decay_grid: [0.0001]
+  max_epochs: 300
+  patience: 20               # early stopping on fold-validation AUPRC
+  embedding_dim: 16          # CODE group = learnable node-id embedding
+  selection_seed: 0          # hyperparameters are selected once per (run, target) on this seed, then refit per seed
+  device: cpu                # subgraphs are tiny; CPU is deterministic and fast enough
+  quick: {max_epochs: 5, patience: 2}   # --quick smoke runs

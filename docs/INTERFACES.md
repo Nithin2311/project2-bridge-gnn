@@ -56,13 +56,23 @@ uv run python scripts/06_gnn.py --run-id A1a --target cardiometabolic --arch sag
 | `--seeds` | integers | `cfg.seeds` |
 | `--subsample-file` | as step 05 (same `{seed}` template; the only subsampling mechanism, so both steps see identical subsets) | none |
 | `--null-graph` | none, rewire0 .. rewire4, shuffle (requires `--layer N`) | none |
-| `--drop-codes` | none, bridge (remove the target's B-flag codes from the subgraph and the bag) | none |
-| `--dry-run` | print the resolved configuration and exit 0 without training | off |
+| `--drop-codes` | none, bridge (remove the target's B-flag codes from the subgraph and the UTIL code counts) | none |
+| `--node-features-dir` | directory with `node_index.csv`, `node_x.npy`, `feature_groups.json`; default `outputs/features/` (step 02) if present, else built into `outputs/features_xcheck/` from Project 1 files | auto |
+| `--quick` | smoke run with `gnn.quick` epochs and patience | off |
+| `--dry-run` | print the resolved configuration (flags, model kwargs, grid, node-feature dir, family) as JSON and exit 0 without importing torch | off |
 
-Outputs: `outputs/predictions/{run_id}_{target}_seed{seed}.parquet`, a row per seed appended to
-`outputs/results/gnn.csv`, curves at `outputs/logs/06_{run_id}_{target}_seed{seed}.json`, log at
-`outputs/logs/06_{run_id}_{target}.log`. `family` in the results row is `gnn` for `G-*` runs and the
-experiment's family letter otherwise.
+Protocol: hyperparameters (`gnn.lr_grid x gnn.weight_decay_grid`) are selected once per (run_id, target) on
+`gnn.selection_seed` by GroupKFold (`split.cv_folds`) over development rows, early stopping on fold-validation
+AUPRC; then each seed refits on all development rows for the mean best epoch count and predicts test once. With
+`--subsample-file`, selection and refit are repeated per seed on that seed's patient subset. CODE = learnable
+node-id embedding; CHAPTER and COMMUNITY node columns travel with STRUCT. On Layer D, GCN receives the
+symmetrised edge set (`symmetrise: true` in `params_json`); SAGE and GAT use the directed edges.
+
+Outputs: `outputs/predictions/{run_id}_{target}_seed{seed}.parquet` (development rows carry the selection
+run's out-of-fold `p`, test rows the seed's refit), a row per seed upserted into `outputs/results/gnn.csv`
+(keyed by run_id, target, seed), curves at `outputs/logs/06_{run_id}_{target}_seed{seed}.json` (per-fold
+selection curves and the refit curve), log at `outputs/logs/06_{run_id}_{target}.log`. `family` in the results
+row is looked up by run_id in `config/experiments.yaml`, `gnn` when absent.
 
 ## Step 07 — experiment driver (Plan D, Dylan)
 
