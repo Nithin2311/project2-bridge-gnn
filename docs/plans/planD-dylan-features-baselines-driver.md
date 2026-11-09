@@ -1,8 +1,5 @@
 # Plan D (Dylan): step 02 features, step 05 non-graph baselines, step 07 experiment driver
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
->
-> **For Dylan:** this plan is written so you can start today against the synthetic fixtures (`tests/conftest.py`, `synth.make`) and never wait on Nithin. When `outputs/rows.parquet` and `outputs/row_codes.parquet` land (Plan 1, Task 5), the same code runs on real data. Work on branches `dylan/02-features`, `dylan/05-baselines`, `dylan/07-driver`; open a PR per task. Nithin will independently build 02 and 05 on `nithin/xcheck-*` branches and the two are compared row-for-row before either is trusted.
 
 **Goal:** Produce the feature matrices every model shares (step 02), the tuned non-graph baselines the GNNs must beat (step 05), and the driver that runs the spec's experiment grid (step 07).
 
@@ -10,7 +7,7 @@
 
 **Tech Stack:** polars, numpy, scikit-learn (LogisticRegression, HistGradientBoostingClassifier, MLPClassifier, GroupKFold, StandardScaler), pyyaml, pytest. No torch.
 
-**Spec:** `docs/superpowers/specs/2026-11-06-project2-design.md` sections 5, 7, 8, 10. Contract: `docs/DATA-CONTRACT.md`. CLI contract: `docs/INTERFACES.md`.
+**Spec:** `docs/DESIGN.md` sections 5, 7, 8, 10. Contract: `docs/DATA-CONTRACT.md`. CLI contract: `docs/INTERFACES.md`.
 
 ## Global Constraints
 

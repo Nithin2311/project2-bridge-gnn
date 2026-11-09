@@ -1,13 +1,12 @@
 # Project 2 design: do bridge diagnoses and graph structure predict entry into a disease community?
 
-Status: DRAFT v3 for approval, 2026-11-06. v1 (Nov 5) reviewed by an independent builder check; v2 resolved its
-five questions; v3 folds in the Project 2 description (`Project Description_Project 2.pdf`, received Nov 6).
-Nothing built yet.
+Status: DRAFT v3 for approval, 2026-11-06. v1 (Nov 5) independently reviewed; v2 resolved its five review questions; v3 folds in the Project 2 description (`Project Description_Project 2.pdf`, received Nov 6).
+Plan 1 (foundation) is implemented and merged as of 2026-11-09.
 Authors: Nithin Palyam (plan), Dylan Girrens (to review and take ownership of blocks in section 10).
 Inputs: Project 1 pipeline and outputs, P2-READINESS.md, the two P2 literature briefs, the Project 2 description
 and rubric, Dr. Kim's scoping call of 2026-11-05.
 
-Items marked **[my call]** are defaults chosen by the planner, not decisions anyone has made; override freely.
+Items marked **[default]** are defaults chosen by the planner, not decisions anyone has made; override freely.
 Items marked **[open]** need a human answer before implementation. Items marked **[rubric]** are required by the
 Project 2 description.
 
@@ -132,13 +131,13 @@ Three things this serves at once:
   Model selection = 5-fold GroupKFold by patient inside the development set (hyperparameters and the number of
   epochs, chosen on out-of-fold AUPRC averaged over folds). Final model = refit on the whole development set
   with the selected configuration and the mean best epoch count. Test rows are touched once per final
-  configuration. **[my call]** A fixed train/val protocol would fit the cardiometabolic model on 50 positives
+  configuration. **[default]** A fixed train/val protocol would fit the cardiometabolic model on 50 positives
   and select on 57; pooling gives 107 for fitting and stabilises selection. This matches the P1 config note
   ("Project 2 tunes by cross-validation inside train + val"). The report names the development set as the
   "training patients" in the rubric's sense; test patients never enter any graph, statistic, scaler or
   selection step.
 - Secondary horizon 6 months, secondary target definitions (single-seed community, chapter block): appendix
-  table only if time permits. **[my call]** Not tuned on.
+  table only if time permits. **[default]** Not tuned on.
 - Temporal backtest (secondary): train on rows with index <= 2019-12-31, test on held-out patients' rows with
   index >= 2020-07-01, on the pre-2020 graph (experiment B5).
 
@@ -149,15 +148,15 @@ For each row, the model may use only that patient's records dated on or before t
 - Code set: the patient's distinct ICD-10 categories recorded any time in a lookback window ending at the
   index. Step 01 extracts ALL categories (including R, Z, O chapters and codes below the prevalence floor), then
   derives the main-graph subset (496 nodes) for the graph models. Primary lookback: 1,095 days. Ablation: 365
-  days and all history. **[my call]** 1,095 is primary because 365 leaves 20% of rows with fewer than 3 codes.
-  **[my call]** Extracting all codes now is cheap and lets the tabular baselines see Z79, Z86, Z51 and R codes,
+  days and all history. **[default]** 1,095 is primary because 365 leaves 20% of rows with fewer than 3 codes.
+  **[default]** Extracting all codes now is cheap and lets the tabular baselines see Z79, Z86, Z51 and R codes,
   which are often the strongest predictors of new diagnoses. Category mapping reuses
   `bridgedx.cohort._register_category_map` (Project 2 takes Project 1 as a path dependency) so code sets are
   identical to Project 1's.
 - Target exclusion from inputs **[rubric]**: for a given target, the row's input masks every code in the
   target's stable core AND its a-priori chapter block (`chapter_blocks` in the P1 config), as the near-synonym
   set. Eligibility (no prior target code) stays defined on the core only, so label counts do not change.
-  **[my call]**
+  **[default]**
 - Patient-level covariates: age at index, recorded sex, number of distinct categories in the window, number of
   diagnosis rows in the window (utilisation proxy), number of distinct visit days in the prior 365 days, days
   since first era diagnosis, calendar year of index.
@@ -170,7 +169,7 @@ For each row, the model may use only that patient's records dated on or before t
   has no consensus id, `coassignment.csv` exists if one is wanted), stable-core membership flags per target,
   inpatient share, CCIR chronic share, mean age at first occurrence, female share, chapter one-hot, backbone
   degree.
-- Bridge-specific features, pre-registered here **[my call]** because the survivor set is only 13 codes and a
+- Bridge-specific features, pre-registered here **[default]** because the survivor set is only 13 codes and a
   13-flag ablation would be underpowered on 100 positives:
   - B-flag: binary `bridge_survivor` per node, and per target the union of survivors over the three pairs that
     involve that target (cardiometabolic 7 codes, hematologic 6, mental health 8).
@@ -224,7 +223,7 @@ OR >= 1.2, >= 10 shared patients). Variants: U-bb, the top-10 per-node phi backb
 **Layer D (directed precedence, new; Dr. Kim's request).** Built from `patient_category.parquet` (person,
 category, first_date) on train+val patients only.
 - For each ordered pair (A, B) among main-graph nodes: n_AB = patients with first A at least g days before
-  first B; n_BA the reverse; ties within g days excluded. g = 30 days **[my call]**; sensitivity g = 0 and 90.
+  first B; n_BA the reverse; ties within g days excluded. g = 30 days **[default]**; sensitivity g = 0 and 90.
 - Keep A -> B if (A, B) is an undirected edge in Layer U (direction is added to validated co-occurrence, not
   invented), n_AB + n_BA >= 20, and a two-sided binomial test of n_AB vs n_BA rejects p = 0.5 at BH-FDR 0.05.
   Weight: share n_AB / (n_AB + n_BA), and the raw count.
@@ -238,7 +237,7 @@ category, first_date) on train+val patients only.
 (the 13 standard triad classes; the feed-forward chain A -> B -> C is the one of interest). Null: 100
 degree-preserving directed rewirings. Report z-scores per motif class overall, and the motif participation of
 each bridge code (how often a bridge is the middle node of a chain that ends in a target core). Tooling:
-NetworkX triadic census for counts, igraph for rewiring **[my call]**. Chains through bridge codes are listed
+NetworkX triadic census for counts, igraph for rewiring **[default]**. Chains through bridge codes are listed
 with their patient counts as a readable table.
 
 **Layer N (null graphs, for experiment D1).** Degree-preserving rewirings of Layer U (reuse
@@ -247,7 +246,7 @@ Node features unchanged. **[rubric]**
 
 **Patient subgraph for a row.** Induced subgraph of the row's masked code set on the chosen layer. Sparse
 subgraphs: (a) isolates kept as nodes (they carry features; pooling sees them); (b) ablation adding 1-hop
-neighbours from the global graph as context nodes with a flag feature (Chet-style). **[my call]** Primary is
+neighbours from the global graph as context nodes with a flag feature (Chet-style). **[default]** Primary is
 (a); (b) is experiment B6.
 
 **Bipartite variant (experiment B2).** Heterogeneous graph per row: one patient node (DEMO + UTIL features)
@@ -264,7 +263,7 @@ All models see identical rows, splits, and feature definitions. Each is run with
 Non-graph baselines (tuned as carefully as the GNNs; the rubric requires LR or MLP on the same features):
 1. Prevalence-only: predicts the development positive rate. Floor.
 2. Logistic regression (L2) on CODE (496-node bag) + DEMO + UTIL.
-3. Gradient-boosted trees (sklearn HistGradientBoosting **[my call]**: no new native dependency) on CODE +
+3. Gradient-boosted trees (sklearn HistGradientBoosting **[default]**: no new native dependency) on CODE +
    DEMO + UTIL + BRIDGE row features. Parity baseline.
 3b. The same on ALL categories in the window (R, Z, O and sub-floor codes, about 617+ columns) + DEMO + UTIL.
    Strongest realistic tabular baseline; the headline paired comparison is reported against both 3 and 3b.
@@ -286,7 +285,7 @@ GNNs (PyTorch Geometric):
 9. GNN on Layer D: same three architectures with directed message passing (SAGE and GAT accept a directed
    `edge_index`; GCN uses the symmetrised variant and is reported as such).
 
-**[my call]** Separate binary models per target. A multi-task head (one model, four outputs) is optional if
+**[default]** Separate binary models per target. A multi-task head (one model, four outputs) is optional if
 time permits; not primary because eligible row sets differ per target.
 
 **Optional side task (demoted 2026-11-06).** Node classification on the 496-node graph (CCIR chronic flag;
@@ -356,7 +355,7 @@ Everything else in this document is ordered after that.
 
 ## 10. Repository and pipeline shape
 
-**[my call]** New repository `project2-bridge-gnn` beside `project1-bridge-dx`; Project 1 stays frozen as
+**[default]** New repository `project2-bridge-gnn` beside `project1-bridge-dx`; Project 1 stays frozen as
 the course submission snapshot and is a path dependency (category map, null models, graph builders for B5).
 Same conventions: `uv`, `config/p2.yaml` holding every parameter with its reason, numbered scripts writing to
 `outputs/`, library in `src/bridgegnn/`, `tests/` on synthetic data, `.gitignore` excluding all patient-level
@@ -439,13 +438,13 @@ config); log format.
 |---|---|---|---|
 | Graph-classification vs the Lecture 05 node-classification recipe | Main task kept; P2 description confirms free choice; side task demoted to optional | Nithin | Nov 5-6 |
 | Train/val rows scored on a graph that saw their own future records | Accept, document; pre-2020 rebuild promoted to experiment B5 | Nithin | Nov 5-6 |
-| Fixed train/val vs cross-validation in train+val | 5-fold GroupKFold in development set, refit, test once | planner's call | Nov 5 |
-| What counts as a bridge in A1 and baseline 5 | B-flag + B-score pre-registered; power limit stated | planner's call | Nov 5 |
-| Tabular baselines on 496 nodes only vs all codes | Step 01 extracts all codes; baseline 3b added | planner's call | Nov 5 |
-| Rubric: non-graph baseline on the same input features | Baseline 4b (MLP on pooled node features) added | planner's call | Nov 6 |
-| Rubric: five experiment families | Section 8 reorganised; C1, D1, E1, E2, B4 added; minimum = first row per family | planner's call | Nov 6 |
-| Rubric: temporal features ablation | TEMP feature group added (days since last/first recording, recent flag); A4 | planner's call | Nov 6 |
-| Rubric: exclude target and near-synonym codes from inputs | Inputs mask core + chapter block; eligibility unchanged | planner's call | Nov 6 |
+| Fixed train/val vs cross-validation in train+val | 5-fold GroupKFold in development set, refit, test once | default | Nov 5 |
+| What counts as a bridge in A1 and baseline 5 | B-flag + B-score pre-registered; power limit stated | default | Nov 5 |
+| Tabular baselines on 496 nodes only vs all codes | Step 01 extracts all codes; baseline 3b added | default | Nov 5 |
+| Rubric: non-graph baseline on the same input features | Baseline 4b (MLP on pooled node features) added | default | Nov 6 |
+| Rubric: five experiment families | Section 8 reorganised; C1, D1, E1, E2, B4 added; minimum = first row per family | default | Nov 6 |
+| Rubric: temporal features ablation | TEMP feature group added (days since last/first recording, recent flag); A4 | default | Nov 6 |
+| Rubric: exclude target and near-synonym codes from inputs | Inputs mask core + chapter block; eligibility unchanged | default | Nov 6 |
 | Rubric: bipartite vs diagnosis-only | B2 as HeteroGNN, doubling as extra-credit Option A candidate | Nithin | Nov 6 |
-| Rubric: labs feature ablation | Skipped with reason (labs not used) | planner's call | Nov 6 |
+| Rubric: labs feature ablation | Skipped with reason (labs not used) | default | Nov 6 |
 | Rubric: report length and sections | 6-8 pages, seven sections, 5+ related works | rubric | Nov 6 |

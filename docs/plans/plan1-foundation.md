@@ -1,6 +1,5 @@
 # Plan 1: Foundation, data contract, rows, Dylan package
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stand up the `project2-bridge-gnn` repository with its config, the frozen data contract, synthetic fixtures, step 00 (input check) and step 01 (label rows + per-row code sets), and publish the package Dylan needs to start steps 02/05/07 independently.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** Python >= 3.11, uv, polars, duckdb, pyarrow, numpy, pyyaml, pytest; `bridgedx` (Project 1) as a path dependency. No torch in this plan.
 
-**Spec:** `docs/superpowers/specs/2026-11-06-project2-design.md` (sections 3, 4, 5, 10 are the ones this plan implements).
+**Spec:** `docs/DESIGN.md` (sections 3, 4, 5, 10 are the ones this plan implements).
 
 ## Global Constraints
 

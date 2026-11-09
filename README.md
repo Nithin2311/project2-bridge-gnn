@@ -13,11 +13,11 @@ artifacts under `outputs/artifacts/`.
 
 ## Read first
 
-1. `docs/superpowers/specs/2026-11-06-project2-design.md` — the design (what, why, every decision).
+1. `docs/DESIGN.md` — the design (what, why, every decision).
 2. `docs/DATA-CONTRACT.md` — the files that cross between steps and people; schemas are law.
 3. `docs/INTERFACES.md` — the CLI contracts for steps 05 and 06 and the experiment grid.
-4. Plans: `docs/superpowers/plans/2026-11-06-plan1-foundation.md` (Nithin) and
-   `docs/superpowers/plans/2026-11-06-planD-dylan-features-baselines-driver.md` (Dylan).
+4. Plans: `docs/plans/plan1-foundation.md` (Nithin) and
+   `docs/plans/planD-dylan-features-baselines-driver.md` (Dylan).
 
 ## Layout
 

@@ -27,9 +27,6 @@ __pycache__/
 # notebooks checkpoints
 .ipynb_checkpoints/
 
-# plan-execution scratch
-.superpowers/
-
 # os / editor
 .DS_Store
 .vscode/
