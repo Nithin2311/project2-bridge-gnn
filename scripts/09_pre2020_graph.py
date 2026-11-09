@@ -82,7 +82,7 @@ for target in targets:
     for run_id, extra in runs.items():
         cmd = [sys.executable, str(config.REPO_ROOT / "scripts" / "06_gnn.py"), "--run-id", run_id, "--target", target, "--arch", arch, *extra]
         print(f"=== {run_id} {target} ({time.time()-t0:.0f}s)", flush=True)
-        r = subprocess.run(cmd, capture_output=True, text=True)
+        r = subprocess.run(cmd, capture_output=True, text=True, check=False)
         for line in r.stdout.splitlines():
             print(line, flush=True)
         if r.returncode != 0:
