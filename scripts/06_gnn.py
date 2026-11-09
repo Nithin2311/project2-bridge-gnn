@@ -47,6 +47,10 @@ def parse_args(argv=None):
     ap.add_argument("--drop-codes", default="none", choices=["none", "bridge"])
     ap.add_argument("--subsample-file", default=None, help="path template with {seed}; one development person_id per line")
     ap.add_argument("--node-features-dir", default=None)
+    ap.add_argument("--layer-file", default=None, help="graphml path; overrides --layer (recorded as file:<name>)")
+    ap.add_argument("--index-from", default=None, help="YYYY-MM-DD, inclusive; applies to every row")
+    ap.add_argument("--index-to", default=None, help="YYYY-MM-DD, inclusive; every row, or development rows only when --test-index-from is set")
+    ap.add_argument("--test-index-from", default=None, help="YYYY-MM-DD, inclusive; test rows only (backtest window)")
     ap.add_argument("--quick", action="store_true", help="smoke run: cfg.gnn.quick epochs/patience")
     ap.add_argument("--dry-run", action="store_true")
     return ap.parse_args(argv), cfg
@@ -55,6 +59,9 @@ def parse_args(argv=None):
 def load_layer(args, cfg) -> tuple[nx.Graph | nx.DiGraph, bool]:
     p1 = config.p1_outputs(cfg)
     out = config.outputs_dir(cfg)
+    if args.layer_file:
+        g = nx.read_graphml(args.layer_file)
+        return g, g.is_directed()
     if args.layer == "U":
         return nx.read_graphml(p1 / "graph_main.graphml"), False
     if args.layer == "U-bb":
@@ -109,6 +116,8 @@ def main(argv=None):
     if (args.layer == "N") != (args.null_graph != "none"):
         sys.exit("--layer N and --null-graph must be used together")
     directed = args.layer == "D"
+    if args.layer_file:
+        directed = nx.read_graphml(args.layer_file).is_directed()
     symmetrise = directed and args.arch == "gcn"
     weights_used = bool(args.weighted) and args.arch == "gcn"
     if args.weighted and args.arch != "gcn":
@@ -129,7 +138,8 @@ def main(argv=None):
                         "embedding_dim": int(cfg["gnn"]["embedding_dim"]), "use_embedding": "CODE" in features}
     grid = [{"lr": float(lr), "weight_decay": float(wd)} for lr in cfg["gnn"]["lr_grid"] for wd in cfg["gnn"]["weight_decay_grid"]]
     flags = {k: v for k, v in vars(args).items() if k not in {"dry_run", "seeds"}}
-    flags.update({"features": ",".join(features), "symmetrise": symmetrise, "weights_used": weights_used,
+    layer_label = f"file:{Path(args.layer_file).stem}" if args.layer_file else args.layer
+    flags.update({"features": ",".join(features), "symmetrise": symmetrise, "weights_used": weights_used, "layer": layer_label,
                   "node_features_dir": str(nf_dir), "drop_codes_n": len(drop), "quick": bool(args.quick)})
     resolved = {"flags": flags, "model_kwargs": model_kwargs, "grid": grid, "cov_names": cov_names, "seeds": args.seeds,
                 "family": family_for(args.run_id), "gnn_cfg": {k: v for k, v in cfg["gnn"].items() if k != "quick"}}
@@ -141,7 +151,7 @@ def main(argv=None):
 
     rows_all = contract.read(out / "rows.parquet", "rows")
     rc = contract.read(out / "row_codes.parquet", "row_codes")
-    rows_t = rows_all.filter(pl.col("target") == args.target)
+    rows_t = data.filter_rows(rows_all.filter(pl.col("target") == args.target), args.index_from, args.index_to, args.test_index_from)
     g_layer, _ = load_layer(args, cfg)
     exs = data.build_examples(rows_t, rc, args.target, node_index, X, groups, g_layer, opts, cfg)
     dev_all = [e for e in exs if e.split in cfg["split"]["dev"]]
