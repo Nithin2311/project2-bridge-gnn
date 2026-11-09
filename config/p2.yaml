@@ -37,3 +37,20 @@ bridge:
   survivor_flag: bridge_survivor   # column in P1 outputs/p2/node_features.csv (13 codes)
   score_source: bridges.csv        # P1 per-pair cluster-restricted betweenness, all 496 nodes x 6 pairs
   score_column: bridge_betweenness
+
+layers:                      # step 03 (design section 6): Layer D, U-bh, Layer N
+  precedence_gap_days: 30    # A must precede B by >= 30 d; closer pairs are ties (direction, not same-episode co-coding)
+  gap_sensitivity_days: [0, 90]
+  drop_day_one_codes: true   # P1: 40% of cardiometabolic carriers are coded on their first era day (problem-list carry-over)
+  min_pair_patients: 20      # n_fwd + n_rev floor before the binomial test
+  alpha: 0.05                # BH-FDR over tested pairs
+  null_n: 5                  # degree-preserving rewirings for experiment D1 (bridgedx.null_models.rewired)
+  null_seed: 0
+  bh_alpha: 0.05             # U-bh variant: BH instead of Bonferroni on the P1 Fisher p-values, same OR and support floors
+  top_k_into_cores: 15
+
+motifs:                      # step 04
+  null_n: 100                # directed degree-preserving rewirings for the triad census
+  seed: 0
+  min_chain_patients: 10     # A -> bridge -> core-code chains need this many strictly ordered patients to be listed
+  top_chains: 40
