@@ -37,3 +37,11 @@ __pycache__/
 *.part
 EHRSHOT_ASSETS*
 Unconfirmed*
+
+# aggregate results for the submission: re-include every artifact type explicitly (last match wins); never parquet
+!outputs/artifacts/**/*.csv
+!outputs/artifacts/**/*.tex
+!outputs/artifacts/**/*.json
+!outputs/artifacts/**/*.pdf
+!outputs/artifacts/**/*.md
+outputs/artifacts/**/*.parquet
