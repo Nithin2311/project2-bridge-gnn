@@ -45,3 +45,5 @@ Unconfirmed*
 !outputs/artifacts/**/*.pdf
 !outputs/artifacts/**/*.md
 outputs/artifacts/**/*.parquet
+
+!outputs/artifacts/**/*.npy
