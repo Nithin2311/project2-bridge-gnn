@@ -1,17 +1,18 @@
 \subsection{Non-graph comparison}
-Table~\ref{tab:baseline-ap} reports test average precision. The prevalence comparator equals the test positive fraction because its scores are constant. All-code boosting uses a broader diagnosis vocabulary, including symptom and status codes. The pooled MLP summarizes the GNN's feature sources without message passing and is the closest tabular comparison.
+Table~\ref{tab:baseline} reports test AUROC and average precision (AUPRC) for the seven non-graph baselines and the three GNNs on the same rows, split and feature definitions; Table~\ref{tab:baseline-ci} in the appendix gives the first seed's point estimates with 95\% patient-level percentile bootstrap intervals (1{,}000 resamples). The prevalence comparator scores every row with the development positive fraction, so its AUROC is 0.5 and its AUPRC equals the test positive rate. All-code boosting uses the broader diagnosis vocabulary, including symptom and status codes. The pooled MLP summarizes the GNN's feature sources without message passing and is the closest tabular comparison.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
-\caption{Test average precision, mean and standard deviation across five seeds. CM denotes cardiometabolic, Heme denotes hematologic cancer, and MH denotes mental health.}
-\label{tab:baseline-ap}
+\caption{Test AUROC and AUPRC, mean and standard deviation across five seeds, non-graph baselines and GNNs. CM: cardiometabolic; Heme: hematologic cancer; MH: mental health. $^{\dagger}$Deterministic given the development set: one fit is shared across seeds, so the standard deviation is zero by construction.}
+\label{tab:baseline}
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcccccc}
 \hline
-Model & CM & Heme & MH \\
+ & \multicolumn{2}{c}{CM} & \multicolumn{2}{c}{Heme} & \multicolumn{2}{c}{MH} \\
+Model & AUROC & AUPRC & AUROC & AUPRC & AUROC & AUPRC \\
 \hline
-\input{baseline-ap-rows.tex}
+\input{baseline-rows.tex}
 \hline
 \end{tabular}
-\end{table}
+\end{table*}
 \input{baseline-results-summary.tex}

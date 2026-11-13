@@ -1,14 +1,15 @@
 \paragraph{C1: Development cohort size.}
-We fit GraphSAGE and graph-code boosting on 25\%, 50\%, and 100\% of development patients and held the test cohort fixed. Smaller cohorts retain all eligible landmarks from each sampled patient. Variation across those seeds includes changes in the training sample. Table~\ref{tab:scale-ap} summarizes the learning curves. The two model families use the same test landmarks. The archived GraphSAGE runs and the new boosting runs have independently reproduced development draws, so the cross-family comparison is descriptive.
+We fit GraphSAGE and graph-code boosting on 25\%, 50\%, and 100\% of development patients and held the test cohort fixed. Smaller cohorts retain all eligible landmarks from each sampled patient. Each seed draws its own patient subset, so variation across seeds includes the training sample. Table~\ref{tab:scale-ap} summarizes the learning curves. Both model families are trained on the same seeded patient subsets and scored on the same test landmarks.
 
 \begin{table}[t]
 \centering
-\caption{Test average precision by development cohort fraction.}
+\caption{Test AUROC and AUPRC by development cohort fraction (mean\(\pm\)SD over five seeds).}
 \label{tab:scale-ap}
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcccccc}
 \hline
-Model and cohort & CM & Heme & MH \\
+ & \multicolumn{2}{c}{CM} & \multicolumn{2}{c}{Heme} & \multicolumn{2}{c}{MH} \\
+Model and cohort & AUROC & AUPRC & AUROC & AUPRC & AUROC & AUPRC \\
 \hline
 \input{scale-ap-rows.tex}
 \hline
@@ -21,12 +22,13 @@ We replaced Layer~U with five degree-preserving rewires and a degree-unconstrain
 
 \begin{table}[t]
 \centering
-\caption{Test average precision for observed and randomized edges. Rewires report the range of seed means.}
+\caption{Test AUROC and AUPRC for observed and randomized edges (GraphSAGE). Rewires report the range of the five graphs' seed means.}
 \label{tab:null-ap}
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcccccc}
 \hline
-Edges & CM & Heme & MH \\
+ & \multicolumn{2}{c}{CM} & \multicolumn{2}{c}{Heme} & \multicolumn{2}{c}{MH} \\
+Edges & AUROC & AUPRC & AUROC & AUPRC & AUROC & AUPRC \\
 \hline
 \input{null-ap-rows.tex}
 \hline

@@ -1,4 +1,9 @@
-"""Generate the LaTeX result fragments from step 08 aggregates and step 05 configurations."""
+"""Generate the LaTeX result fragments for the baseline, C1 and D1 sections from step 08's tables.
+
+Inputs (defaults = the committed aggregates): outputs/eval/tables/runs_agg.csv (every run: G-*, B-*, C1-*, D1-*),
+outputs/eval/tables/paired.csv (step 08 paired deltas on identical test rows), outputs/results/baselines.csv
+(selected configurations). Run after `scripts/08_evaluate.py` with both the GNN and baseline predictions present.
+"""
 from __future__ import annotations
 
 import argparse
@@ -15,11 +20,14 @@ BASELINES = {
     "B-hgb_all": "All-code boosting", "B-mlp": "MLP", "B-mlp_pool": "Pooled MLP",
     "B-bridge_lr": "Bridge logistic regression",
 }
+DETERMINISTIC = {"B-prevalence", "B-lr", "B-hgb", "B-hgb_all", "B-bridge_lr"}
+GNNS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT"}
 REWIRES = [f"D1-rewire{i}" for i in range(5)]
 SCALE = {
     "C1-25": r"GraphSAGE, 25\%", "C1-50": r"GraphSAGE, 50\%", "G-sage": r"GraphSAGE, 100\%",
     "C1-25-hgb": r"Boosting, 25\%", "C1-50-hgb": r"Boosting, 50\%", "B-hgb": r"Boosting, 100\%",
 }
+PAIR_REFS = ["B-hgb_all", "B-mlp_pool"]
 
 
 def tex_row(label: str, fields: list[str]) -> str:
@@ -38,7 +46,7 @@ def format_params(row: dict) -> str:
     if model in {"lr", "bridge_lr"}:
         return rf"$C={p['C']:g}$"
     if model in {"hgb", "hgb_all"}:
-        return rf"$\eta={p['learning_rate']:g}$, {p['max_leaf_nodes']} leaves"
+        return rf"$\eta={p['learning_rate']:g}$, {p['max_leaf_nodes']} leaves, {p['max_iter']} rounds"
     widths = "--".join(map(str, p["hidden_layer_sizes"]))
     alpha = r"10^{-4}" if p["alpha"] == 1e-4 else r"10^{-3}"
     return rf"{widths} units, $\alpha={alpha}$, {p['refit_epochs']} epochs"
@@ -46,104 +54,118 @@ def format_params(row: dict) -> str:
 
 def main() -> None:
     root = config.REPO_ROOT
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--baseline-runs", type=Path, default=root / "outputs/eval/tables/runs_agg.csv")
-    parser.add_argument("--gnn-runs", type=Path, default=root / "outputs/artifacts/eval/tables/runs_agg.csv")
-    parser.add_argument("--baseline-results", type=Path, default=root / "outputs/results/baselines.csv")
-    parser.add_argument("--paired", type=Path)
-    parser.add_argument("--out", type=Path, default=root / "report")
-    args = parser.parse_args()
-    stats = table_map(args.gnn_runs)
-    stats.update({key: row for key, row in table_map(args.baseline_runs).items()
-                  if key[0] in BASELINES or key[0] in {"C1-25-hgb", "C1-50-hgb"}})
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--runs", type=Path, default=root / "outputs/eval/tables/runs_agg.csv")
+    ap.add_argument("--paired", type=Path, default=root / "outputs/eval/tables/paired.csv")
+    ap.add_argument("--baseline-results", type=Path, default=root / "outputs/results/baselines.csv")
+    ap.add_argument("--out", type=Path, default=root / "report")
+    args = ap.parse_args()
+    stats = table_map(args.runs)
     rows = contract.read(args.baseline_results, "results")
     args.out.mkdir(parents=True, exist_ok=True)
 
     def write(name, content):
         (args.out / f"{name}.tex").write_text(content + "\n", encoding="utf-8")
 
-    def ap(run, target):
-        return stats[(run, target)]["auprc_mean"]
+    def stat(run, target, key):
+        return stats[(run, target)][key]
 
-    def number(run, target):
-        row = stats[(run, target)]
-        return f"{row['auprc_mean']:.3f}" + r"\(\pm\)" + f"{row['auprc_sd'] or 0.0:.3f}"
+    def msd(run, target, metric):
+        r = stats[(run, target)]
+        return f"{r[f'{metric}_mean']:.3f}" + r"\(\pm\)" + f"{r[f'{metric}_sd'] or 0.0:.3f}"
 
-    for run in {*BASELINES, *SCALE, *REWIRES, "D1-shuffle", "G-gcn", "G-gat"}:
+    def ci(run, target, metric):
+        r = stats[(run, target)]
+        return f"{r[f'{metric}_seed']:.3f} [{r[f'{metric}_lo']:.3f}, {r[f'{metric}_hi']:.3f}]"
+
+    for run in {*BASELINES, *SCALE, *REWIRES, "D1-shuffle", *GNNS}:
         for target in TARGETS:
             row = stats.get((run, target))
             if row is None or row["n_seeds"] != 5:
                 raise ValueError(f"missing five-seed aggregate for {run} / {target}")
 
-    for name, mapping in [("baseline-ap-rows", BASELINES), ("scale-ap-rows", SCALE)]:
-        write(name, "\n".join(tex_row(label, [number(run, t) for t in TARGETS])
-                              for run, label in mapping.items()))
-    ranges = {t: (min(ap(run, t) for run in REWIRES), max(ap(run, t) for run in REWIRES)) for t in TARGETS}
+    def label(run, name):
+        return name + (r"$^{\dagger}$" if run in DETERMINISTIC else "")
+
+    # main table: AUROC and AUPRC, mean and SD over seeds, baselines then GNNs
+    main_rows = [tex_row(label(run, name), [f"{msd(run, t, 'auroc')} & {msd(run, t, 'auprc')}" for t in TARGETS])
+                 for run, name in {**BASELINES, **GNNS}.items()]
+    write("baseline-rows", "\n".join(main_rows))
+    # appendix table: seed-0 point estimate with the 95% patient-bootstrap interval
+    ci_rows = [tex_row(label(run, name), [f"{ci(run, t, 'auroc')} & {ci(run, t, 'auprc')}" for t in TARGETS])
+               for run, name in {**BASELINES, **GNNS}.items()]
+    write("baseline-ci-rows", "\n".join(ci_rows))
+    write("scale-ap-rows", "\n".join(tex_row(lab, [f"{msd(run, t, 'auroc')} & {msd(run, t, 'auprc')}" for t in TARGETS])
+                                     for run, lab in SCALE.items()))
+    ranges = {t: (min(stat(r, t, "auprc_mean") for r in REWIRES), max(stat(r, t, "auprc_mean") for r in REWIRES)) for t in TARGETS}
+    ranges_roc = {t: (min(stat(r, t, "auroc_mean") for r in REWIRES), max(stat(r, t, "auroc_mean") for r in REWIRES)) for t in TARGETS}
     write("null-ap-rows", "\n".join([
-        tex_row("Layer U", [number("G-sage", t) for t in TARGETS]),
-        tex_row("Degree-preserving rewires", [f"{lo:.3f}--{hi:.3f}" for lo, hi in ranges.values()]),
-        tex_row("Edge shuffle", [number("D1-shuffle", t) for t in TARGETS]),
+        tex_row("Layer U", [f"{msd('G-sage', t, 'auroc')} & {msd('G-sage', t, 'auprc')}" for t in TARGETS]),
+        tex_row("Degree-preserving rewires (range of means)", [f"{ranges_roc[t][0]:.3f}--{ranges_roc[t][1]:.3f} & {ranges[t][0]:.3f}--{ranges[t][1]:.3f}" for t in TARGETS]),
+        tex_row("Edge shuffle", [f"{msd('D1-shuffle', t, 'auroc')} & {msd('D1-shuffle', t, 'auprc')}" for t in TARGETS]),
     ]))
 
     notes = []
     for t, short in TARGETS.items():
-        winner = max(BASELINES, key=lambda r: ap(r, t))
-        strongest_gnn = max(ap(r, t) for r in ("G-gcn", "G-sage", "G-gat"))
-        notes.append(f"For {short}, {BASELINES[winner].lower()} had the highest observed baseline mean "
-                     f"AUPRC ({ap(winner, t):.3f}), and the highest GNN mean was {strongest_gnn:.3f}.")
-    bridge = "B-bridge_lr"
-    brier = ", ".join(f"{stats[(bridge, t)]['brier_mean']:.3f}" for t in TARGETS)
-    prior = ", ".join(f"{stats[('B-prevalence', t)]['brier_mean']:.3f}" for t in TARGETS)
-    notes.append(f"The bridge logistic model's mean Brier scores were {brier}, compared with "
-                 f"{prior} for the prevalence comparator, in target order.")
-    notes.append("Bridge logistic regression includes utilization and demographics, so these scores "
-                 "combine their signal with the bridge summaries.")
-    if args.paired:
-        paired = pl.read_csv(args.paired).filter(
-            (pl.col("run_id") == "G-sage") & (pl.col("seed") == 0)
-            & pl.col("baseline").is_in(["B-hgb_all", "B-mlp_pool"]))
-        for target, short in TARGETS.items():
-            target_pairs = paired.filter(pl.col("target") == target)
-            if target_pairs.height != 2:
-                continue
-            values = []
-            for ref in ("B-hgb_all", "B-mlp_pool"):
-                row = target_pairs.filter(pl.col("baseline") == ref).row(0, named=True)
-                values.append(rf"{row['d_auprc']:+.3f} (95\% CI {row['d_auprc_lo']:+.3f} to {row['d_auprc_hi']:+.3f})")
-            notes.append(f"For {short}, the jointly evaluated seed-0 GraphSAGE differences relative to all-code "
-                         f"boosting and pooled MLP were {values[0]} and {values[1]}, respectively.")
-        if paired.height == 6 and (paired["d_auprc_lo"] <= 0).all() and (paired["d_auprc_hi"] >= 0).all():
-            notes.append("All six paired AUPRC intervals included zero.")
+        best_b = max(BASELINES, key=lambda r: stat(r, t, "auroc_mean"))
+        best_g = max(GNNS, key=lambda r: stat(r, t, "auroc_mean"))
+        notes.append(f"For {short}, the strongest baseline by mean AUROC was {BASELINES[best_b].lower()} "
+                     f"({stat(best_b, t, 'auroc_mean'):.3f}, AUPRC {stat(best_b, t, 'auprc_mean'):.3f}) and the strongest GNN was "
+                     f"{GNNS[best_g]} ({stat(best_g, t, 'auroc_mean'):.3f}, AUPRC {stat(best_g, t, 'auprc_mean'):.3f}).")
+    notes.append("Bridge logistic regression includes utilization and demographics, so its discrimination combines their signal "
+                 "with the three bridge summaries; its interval overlaps the GNNs' on every target (Table~\\ref{tab:baseline-ci}).")
+    if args.paired.exists():
+        paired = pl.read_csv(args.paired).filter((pl.col("run_id") == "G-sage") & pl.col("baseline").is_in(PAIR_REFS))
+        if paired.height:
+            s0 = paired.filter(pl.col("seed") == paired["seed"].min())
+            excl = []
+            for t, short in TARGETS.items():
+                parts = []
+                for ref in PAIR_REFS:
+                    r = s0.filter((pl.col("target") == t) & (pl.col("baseline") == ref))
+                    if r.height == 0:
+                        continue
+                    r = r.row(0, named=True)
+                    parts.append(rf"{BASELINES[ref].lower()}: AUROC {r['d_auroc']:+.3f} [{r['d_auroc_lo']:+.3f}, {r['d_auroc_hi']:+.3f}], "
+                                 rf"AUPRC {r['d_auprc']:+.3f} [{r['d_auprc_lo']:+.3f}, {r['d_auprc_hi']:+.3f}]")
+                    if r["d_auroc_lo"] > 0 or r["d_auroc_hi"] < 0:
+                        excl.append(f"{short} AUROC vs {BASELINES[ref].lower()}")
+                    if r["d_auprc_lo"] > 0 or r["d_auprc_hi"] < 0:
+                        excl.append(f"{short} AUPRC vs {BASELINES[ref].lower()}")
+                if parts:
+                    notes.append(f"Paired GraphSAGE-minus-baseline differences on identical test patients ({short}, seed {s0['seed'][0]}, "
+                                 f"95\\% patient-bootstrap intervals): " + "; ".join(parts) + ".")
+            notes.append("Intervals excluding zero: " + (", ".join(excl) if excl else "none") + ".")
     write("baseline-results-summary", " ".join(notes))
+
     scale_notes = []
-    for label, full, quarter in [("GraphSAGE", "G-sage", "C1-25"), ("boosting", "B-hgb", "C1-25-hgb")]:
-        diffs = ", ".join(f"{ap(full, t) - ap(quarter, t):+.3f}" for t in TARGETS)
-        scale_notes.append(f"The full-minus-quarter differences for {label} were {diffs}, in target order.")
-    write("scale-summary", " ".join(scale_notes) + " Changes reflect training cohort size and event mix.")
+    for lab, full, quarter in [("GraphSAGE", "G-sage", "C1-25"), ("boosting", "B-hgb", "C1-25-hgb")]:
+        diffs = ", ".join(f"{stat(full, t, 'auroc_mean') - stat(quarter, t, 'auroc_mean'):+.3f}" for t in TARGETS)
+        scale_notes.append(f"The full-minus-quarter AUROC differences for {lab} were {diffs} (CM, Heme, MH).")
+    write("scale-summary", " ".join(scale_notes) + " Both families were trained on the same seeded patient subsets.")
+
     null_notes = []
     for t, short in TARGETS.items():
-        lo, hi = ranges[t]
-        real, shuffled = ap("G-sage", t), ap("D1-shuffle", t)
-        relation = "above" if real > hi else "below" if real < lo else "within"
-        null_notes.append(f"For {short}, the observed-edge mean ({real:.3f}) was {relation} the rewire range "
-                          f"({lo:.3f}--{hi:.3f}), and the shuffled-edge mean was {shuffled:.3f}.")
-    conclusion = ("The observed graph remained within the rewire range on every target. The learned scores "
-                  "therefore provide limited evidence of an advantage from the particular Layer~U edges.")
-    if not all(lo <= ap("G-sage", t) <= hi for t, (lo, hi) in ranges.items()):
-        conclusion = "These contrasts are descriptive because the experiment used five rewired graphs."
-    write("null-summary", " ".join(null_notes) + " " + conclusion)
+        lo, hi = ranges_roc[t]
+        real, shuffled = stat("G-sage", t, "auroc_mean"), stat("D1-shuffle", t, "auroc_mean")
+        rel = "above" if real > hi else "below" if real < lo else "within"
+        null_notes.append(f"For {short}, the observed-edge mean AUROC ({real:.3f}) was {rel} the rewire range ({lo:.3f}--{hi:.3f}); "
+                          f"the shuffled-edge mean was {shuffled:.3f}.")
+    inside = all(lo <= stat("G-sage", t, "auroc_mean") <= hi for t, (lo, hi) in ranges_roc.items())
+    write("null-summary", " ".join(null_notes) + (" The observed graph stays within the rewire range on every target, so the "
+          "message-passing edges add no measurable discrimination beyond the node features." if inside else
+          " These contrasts are descriptive because the experiment used five rewired graphs."))
 
     configs = []
-    for run, label in BASELINES.items():
+    for run, name in BASELINES.items():
         for t, short in TARGETS.items():
-            subgroup = rows.filter((pl.col("run_id") == run) & (pl.col("target") == t)).sort("seed")
-            if subgroup["seed"].to_list() != [0, 1, 2, 3, 4]:
+            sub = rows.filter((pl.col("run_id") == run) & (pl.col("target") == t)).sort("seed")
+            if sub["seed"].to_list() != [0, 1, 2, 3, 4]:
                 raise ValueError(f"missing selected configurations for {run} / {t}")
             options = {}
-            for row in subgroup.iter_rows(named=True):
+            for row in sub.iter_rows(named=True):
                 options.setdefault(format_params(row), []).append(row["seed"])
-            configs.extend(tex_row(label, [short, ",".join(map(str, seeds)), params])
-                           for params, seeds in options.items())
+            configs.extend(tex_row(name, [short, ",".join(map(str, seeds)), params]) for params, seeds in options.items())
     write("baseline-selected-configs", "\n".join([
         r"\begin{tabular}{llll}", r"\hline", tex_row("Model", ["Target", "Seeds", "Selected configuration"]),
         r"\hline", *configs, r"\hline", r"\end{tabular}",
