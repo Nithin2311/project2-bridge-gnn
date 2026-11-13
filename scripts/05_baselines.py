@@ -5,6 +5,7 @@ import argparse
 import json
 import logging
 import re
+import sys
 import tempfile
 from pathlib import Path
 
@@ -14,6 +15,28 @@ import yaml
 from bridgegnn import config, contract, tabular
 
 LOGGER = logging.getLogger(__name__)
+
+
+def upsert_result(path: Path, result: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Separate CLI invocations can finish at the same time. Serialize the CSV read/replace.
+    with path.with_suffix(".lock").open("a+b") as lock:
+        lock.seek(0)
+        if sys.platform == "win32":
+            import msvcrt
+
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        row = pl.DataFrame([result], schema=contract.SCHEMAS["results"])
+        if path.exists():
+            row = pl.concat([contract.read(path, "results"), row]).unique(
+                ["run_id", "target", "seed"], keep="last", maintain_order=True)
+        pending = path.with_name("baselines.pending.csv")
+        contract.write(row, pending, "results")
+        pending.replace(path)
 
 
 def run(args, cfg: dict, out: Path) -> None:
@@ -50,13 +73,7 @@ def run(args, cfg: dict, out: Path) -> None:
             LOGGER.info("seed %s reuses deterministic fit from seed %s", seed, original["seed"])
         contract.write(preds, out / "predictions" / f"{args.run_id}_{args.target}_seed{seed}.parquet",
                        "predictions")
-        row = pl.DataFrame([result], schema=contract.SCHEMAS["results"])
-        if path.exists():
-            row = pl.concat([contract.read(path, "results"), row]).unique(
-                ["run_id", "target", "seed"], keep="last", maintain_order=True)
-        pending = path.with_name("baselines.pending.csv")
-        contract.write(row, pending, "results")
-        pending.replace(path)
+        upsert_result(path, result)
         LOGGER.info("%s", json.dumps(result, allow_nan=False))
         print(json.dumps(result, allow_nan=False), flush=True)
 

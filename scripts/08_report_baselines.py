@@ -95,9 +95,16 @@ def main() -> None:
         paired = pl.read_csv(args.paired).filter(
             (pl.col("run_id") == "G-sage") & (pl.col("seed") == 0)
             & pl.col("baseline").is_in(["B-hgb_all", "B-mlp_pool"]))
-        if paired.height == 6:
-            notes.append("Seed-0 differences for the jointly evaluated GraphSAGE run are in the paired "
-                         "evaluation table, with 95\\% patient-bootstrap intervals.")
+        for target, short in TARGETS.items():
+            target_pairs = paired.filter(pl.col("target") == target)
+            if target_pairs.height != 2:
+                continue
+            values = []
+            for ref in ("B-hgb_all", "B-mlp_pool"):
+                row = target_pairs.filter(pl.col("baseline") == ref).row(0, named=True)
+                values.append(rf"{row['d_auprc']:+.3f} (95\% CI {row['d_auprc_lo']:+.3f} to {row['d_auprc_hi']:+.3f})")
+            notes.append(f"For {short}, the jointly evaluated seed-0 GraphSAGE differences relative to all-code "
+                         f"boosting and pooled MLP were {values[0]} and {values[1]}, respectively.")
     write("baseline-results-summary", " ".join(notes))
     scale_notes = []
     for label, full, quarter in [("GraphSAGE", "G-sage", "C1-25"), ("boosting", "B-hgb", "C1-25-hgb")]:
