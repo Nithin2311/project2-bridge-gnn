@@ -1,0 +1,35 @@
+\paragraph{C1: Development cohort size.}
+We fit GraphSAGE and graph-code boosting on 25\%, 50\%, and 100\% of development patients and held the test cohort fixed. Smaller cohorts retain all eligible landmarks from each sampled patient. Variation across those seeds includes changes in the training sample. Table~\ref{tab:scale-ap} summarizes the learning curves.
+
+\begin{table}[t]
+\centering
+\caption{Test average precision by development cohort fraction.}
+\label{tab:scale-ap}
+\small
+\begin{tabular}{lccc}
+\hline
+Model and cohort & CM & Heme & MH \\
+\hline
+\input{scale-ap-rows.tex}
+\hline
+\end{tabular}
+\end{table}
+\input{scale-summary.tex}
+
+\paragraph{D1: Edge topology.}
+We replaced Layer~U with five degree-preserving rewires and a degree-unconstrained edge shuffle. The GraphSAGE architecture, static node inputs, and evaluation protocol were fixed. Since the replacement graphs retain diagnosis identities and features computed on Layer~U, this estimates the contribution of message-passing edges conditional on those features.
+
+\begin{table}[t]
+\centering
+\caption{Test average precision for observed and randomized edges. Rewires report the range of seed means.}
+\label{tab:null-ap}
+\small
+\begin{tabular}{lccc}
+\hline
+Edges & CM & Heme & MH \\
+\hline
+\input{null-ap-rows.tex}
+\hline
+\end{tabular}
+\end{table}
+\input{null-summary.tex}

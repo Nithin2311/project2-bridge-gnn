@@ -18,7 +18,7 @@ uv run python scripts/05_baselines.py --run-id B-lr --target cardiometabolic --m
 
 | flag | values | default |
 |---|---|---|
-| `--run-id` | any string; baselines use `B-<model>` | required |
+| `--run-id` | letters, digits, hyphens, underscores | `B-<model>` |
 | `--target` | cardiometabolic, cancer_hematologic, mental_health, cancer_metastatic | required |
 | `--model` | prevalence, lr, hgb, hgb_all, mlp, mlp_pool, bridge_lr | required |
 | `--seeds` | integers | `cfg.seeds` |

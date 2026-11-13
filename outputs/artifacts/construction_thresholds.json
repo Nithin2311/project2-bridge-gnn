@@ -1,0 +1,103 @@
+{
+  "edge_rule": {
+    "cooccurrence": "same_patient",
+    "test": "fisher_exact",
+    "correction": "bonferroni",
+    "alpha": 0.05,
+    "min_odds_ratio": 1.2,
+    "min_shared_patients": 10,
+    "weight": "phi"
+  },
+  "node_rule": {
+    "level": "icd10_3char",
+    "min_prevalence": 0.01,
+    "main_graph_excludes_chapters": [
+      "R",
+      "Z",
+      "O"
+    ]
+  },
+  "graph_patient_splits": [
+    "train",
+    "val"
+  ],
+  "windows": {
+    "lookback_days": [
+      365,
+      1095,
+      0
+    ],
+    "primary_lookback": 1095,
+    "era_start": "2015-10-01",
+    "recent_days": 90,
+    "visit_window_days": 365
+  },
+  "masking": {
+    "input_exclusion": [
+      "core",
+      "chapter_block"
+    ]
+  },
+  "chapter_blocks": {
+    "cardiometabolic": [
+      [
+        "I10",
+        "I15"
+      ],
+      [
+        "I20",
+        "I25"
+      ],
+      [
+        "I48",
+        "I50"
+      ],
+      [
+        "E08",
+        "E13"
+      ],
+      [
+        "E78",
+        "E78"
+      ],
+      [
+        "N18",
+        "N18"
+      ]
+    ],
+    "cancer_metastatic": [
+      [
+        "C77",
+        "C80"
+      ],
+      [
+        "C45",
+        "C49"
+      ]
+    ],
+    "cancer_hematologic": [
+      [
+        "C81",
+        "C96"
+      ],
+      [
+        "D46",
+        "D47"
+      ],
+      [
+        "D60",
+        "D61"
+      ],
+      [
+        "D70",
+        "D70"
+      ]
+    ],
+    "mental_health": [
+      [
+        "F20",
+        "F48"
+      ]
+    ]
+  }
+}

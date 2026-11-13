@@ -50,14 +50,30 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 |---|---|---|
 | 00 | `00_check_inputs.py` — P1 outputs present, DuckDB tables, class balance | N (done) |
 | 01 | `01_rows.py` — label rows + per-row code sets with windows and target masks; ~4 min | N (done) |
-| 02 | `02_features.py` — node feature matrix, bags, pooled features, artifacts | D |
+| 02 | `02_features.py` — node feature matrix, bags, pooled features, artifacts | D (done) |
 | 03 | `03_directed_layer.py` — directed precedence edges (+ gap / day-one sensitivities), U-bh edges, 5 rewired + 1 shuffled null graphs; ~10 s | N (done) |
 | 04 | `04_motifs.py` — triad census vs 100 directed rewirings, bridge middle shares, A -> bridge -> core chains; ~3 min | N (done) |
-| 05 | `05_baselines.py` — non-graph baselines, GroupKFold, refit, test once | D |
+| 05 | `05_baselines.py` — non-graph baselines, GroupKFold, refit, test once | D (done) |
 | 06 | `06_gnn.py` — GCN / SAGE / GAT on patient subgraphs; GroupKFold selection, refit, test once; all experiment flags; 25-135 s per (arch, target) on the M4 | N (done) |
-| 07 | `07_experiments.py` — drives the experiment grid | D |
+| 07 | `07_experiments.py` — drives the experiment grid | D (done) |
 | 08 | `08_evaluate.py` — patient-bootstrap CIs, calibration, F1 at the dev threshold, strata, paired deltas, ROC/PR/curve figures, LaTeX tables | N (done) |
 | 09 | `09_pre2020_graph.py` — pre-2020 rebuild (P1 rules) and the B5 / backtest runs via step 06 | N (done) |
+
+## Reproduce the tabular comparison
+
+```bash
+uv run python scripts/02_features.py
+uv run python scripts/07_experiments.py --only-baselines
+uv run python scripts/08_evaluate.py
+```
+
+If the Project 1 handoff and step 01 files are stored separately, pass their directories to step 02 using
+`--p1-outputs` and `--rows-dir`. Put `rows.parquet` under the configured Project 2 output directory for step 07
+patient subsampling and step 08 evaluation. Step 02 and step 05 also accept `--synthetic` for a local smoke run.
+The driver accepts `--dry-run` to list resolved commands and `--ids` to rerun selected experiments.
+
+The main model comparison uses the three primary targets. Step 02 also exports feature tables for the secondary
+target. The report fragments in `report/` describe the non-graph comparison and its reproducible inputs.
 
 ## Branches
 
