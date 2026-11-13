@@ -111,6 +111,9 @@ def tabular_for_target(
     unmasked = row_codes.filter(~pl.col(f"masked_{target}")).join(main.select(*KEYS, "split"),
                                                                 on=KEYS, how="inner")
     active = unmasked.filter(WINDOWS[lookback]).drop("split")
+    masked = set(row_codes.filter(pl.col(f"masked_{target}"))["category"])
+    if vocab_all is not None and masked.intersection(vocab_all):
+        raise ValueError(f"the supplied vocabulary contains masked categories for {target}")
     if vocab_all is None:
         vocab_all = (unmasked.filter(pl.col("split").is_in(cfg["split"]["dev"]) & WINDOWS[lookback])
                      .group_by("category").len().filter(pl.col("len") >= 10).sort("category")["category"].to_list())

@@ -25,10 +25,11 @@ uv run python scripts/05_baselines.py --run-id B-lr --target cardiometabolic --m
 | `--subsample-file` | path template with a literal `{seed}`, e.g. `outputs/subsamples/C1-25_seed{seed}.txt`; for each seed the script reads that file (one development `person_id` per line) and uses only those patients' development rows for selection and refit; test untouched. The driver writes these files with `driver.subsample_patients` so step 05 and step 06 train on identical subsets | none |
 | `--synthetic` | run the same code path on `synth.make(0)` in a temp dir | off |
 
-Outputs: `outputs/predictions/{run_id}_{target}_seed{seed}.parquet`, a row per seed appended to
+Outputs: `outputs/predictions/{run_id}_{target}_seed{seed}.parquet`, one row per seed written to
 `outputs/results/baselines.csv`, log at `outputs/logs/05_{target}_{model}.log`. `family` in the results row is
-looked up by `run_id` in `config/experiments.yaml` (`baseline` when the id is not listed, e.g. `B-lr`). Append
-= read existing CSV if present, concat, `contract.write`. stdout carries only the JSON lines.
+looked up by `run_id` in `config/experiments.yaml` (`baseline` when the id is not listed, e.g. `B-lr`).
+Results are upserted by (run ID, target, seed). Deterministic fits reuse identical predictions across seeds when
+their development cohort is fixed. stdout carries only the JSON lines.
 
 ## Step 06 — GNN on patient subgraphs (Plan 3, Nithin)
 
