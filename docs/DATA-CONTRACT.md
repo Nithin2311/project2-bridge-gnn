@@ -19,7 +19,7 @@ strings (`I10`). `split` is one of `train`, `val`, `test` from Project 1's `outp
 | `outputs/features/node_index.csv` | step 02 (Dylan) | 06, 08 | `node_index` |
 | `outputs/features_xcheck/{node_index.csv,node_x.npy,feature_groups.json}` | step 06 via `nodefeat.build` (Nithin's cross-check of the node part of step 02) | 06 when `outputs/features/` is absent | same formats; 496 x 59 on real data (STRUCT 16, BRIDGE 9, CHAPTER 19, COMMUNITY 15) |
 | `outputs/features/node_x.npy` | step 02 | 06 | float32 `[n_nodes, n_features]`, rows in `node_index` order |
-| `outputs/features/feature_groups.json` | step 02 | 05, 06, 08 | `{group: [column names]}` for `STRUCT`, `BRIDGE`, `CHAPTER`, `COMMUNITY` (node columns) and `CODE`, `ALL`, `DEMO`, `UTIL`, `TEMP`, `POOL` (row columns), PLUS the key **`node_columns`**: the full ordered list of column names of `node_x.npy`. Step 06 selects node groups by name through `node_columns` and refuses a file without it, so the physical column order is free. |
+| `outputs/features/feature_groups.json` | step 02 | 05, 06, 08 | `{group: [column names]}` for `STRUCT`, `BRIDGE`, `CHAPTER`, `COMMUNITY` (node columns) and `CODE`, `ALL`, `DEMO`, `UTIL`, `TEMP`, `POOL` (row columns), plus `ROW_BRIDGE` and the target-specific `all_by_target` vocabularies. It also has **`node_columns`**: the full ordered list of column names of `node_x.npy`. Step 06 selects node groups by name through `node_columns` and refuses a file without it, so the physical column order is free. |
 | `outputs/features/tabular_{target}_{split}.parquet` | step 02 | 05 | `tabular` |
 | `outputs/artifacts/*.csv`, `construction_thresholds.json` | step 02 | report | aggregate deliverables (rubric) |
 | `outputs/layers/edges_directed.csv` (+ `_g0`, `_g90`, `_incl_dayone` sensitivities) | step 03 (Nithin) | 06, 08, report | `edges_directed` |
@@ -127,7 +127,7 @@ target), `all_` (bag over every category with >= 10 development rows, masked), `
 | TEMP | row (aggregate) and node (per code, step 06) | `temp_min_days_since_last`, `temp_mean_days_since_last`, `temp_share_recent`; per-node: days since last / first recording, recent flag |
 | STRUCT | node | Project 1 structural measures (degree, strength, betweenness, closeness, eigenvector, PageRank, participation, within-module z, degree residual, inpatient share, CCIR chronic share, mean age, female share, backbone degree) plus chapter and community one-hots |
 | BRIDGE | node and row | node: `bridge_flag`, `bridge_flag_<target>`, `bridge_score_<target>`; row: `bridge_n_flag`, `bridge_sum_score`, `bridge_max_score` |
-| POOL | row | `pool_mean_<f>`, `pool_max_<f>` over the row's unmasked main-graph codes for every STRUCT and BRIDGE node column |
+| POOL | row | `pool_mean_<f>`, `pool_max_<f>` over the row's unmasked main-graph codes for each static node column and the GNN's three per-code temporal features |
 
 ## Leakage rules the contract enforces or supports
 

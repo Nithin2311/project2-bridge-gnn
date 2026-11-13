@@ -7,6 +7,15 @@
 default_arch: sage
 
 experiments:
+  # ---- main non-graph baselines ----
+  - {id: B-prevalence, family: baseline, base: baseline, targets: primary, overrides: {model: prevalence}}
+  - {id: B-lr, family: baseline, base: baseline, targets: primary, overrides: {model: lr}}
+  - {id: B-hgb, family: baseline, base: baseline, targets: primary, overrides: {model: hgb}}
+  - {id: B-hgb_all, family: baseline, base: baseline, targets: primary, overrides: {model: hgb_all}}
+  - {id: B-mlp, family: baseline, base: baseline, targets: primary, overrides: {model: mlp}}
+  - {id: B-mlp_pool, family: baseline, base: baseline, targets: primary, overrides: {model: mlp_pool}}
+  - {id: B-bridge_lr, family: baseline, base: baseline, targets: primary, overrides: {model: bridge_lr}}
+
   # ---- main comparison (family gnn) ----
   - {id: G-gcn,  family: gnn, base: gnn, targets: primary, overrides: {arch: gcn},  note: "GCN, full features, layer U"}
   - {id: G-sage, family: gnn, base: gnn, targets: primary, overrides: {arch: sage}, note: "GraphSAGE mean"}

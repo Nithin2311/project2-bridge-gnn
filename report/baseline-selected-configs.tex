@@ -1,0 +1,50 @@
+\begin{tabular}{llll}
+\hline
+Model & Target & Seeds & Selected configuration \\
+\hline
+Prevalence & CM & 0,1,2,3,4 & Development prior \\
+Prevalence & Heme & 0,1,2,3,4 & Development prior \\
+Prevalence & MH & 0,1,2,3,4 & Development prior \\
+Logistic regression & CM & 0,1,2,3,4 & $C=0.01$ \\
+Logistic regression & Heme & 0,1,2,3,4 & $C=0.01$ \\
+Logistic regression & MH & 0,1,2,3,4 & $C=0.01$ \\
+Graph-code boosting & CM & 0,1,2,3,4 & $\eta=0.03$, 31 leaves, 50 rounds \\
+Graph-code boosting & Heme & 0,1,2,3,4 & $\eta=0.1$, 15 leaves, 100 rounds \\
+Graph-code boosting & MH & 0,1,2,3,4 & $\eta=0.03$, 15 leaves, 50 rounds \\
+All-code boosting & CM & 0,1,2,3,4 & $\eta=0.03$, 31 leaves, 50 rounds \\
+All-code boosting & Heme & 0,1,2,3,4 & $\eta=0.03$, 15 leaves, 300 rounds \\
+All-code boosting & MH & 0,1,2,3,4 & $\eta=0.03$, 31 leaves, 100 rounds \\
+MLP & CM & 0 & 64 units, $\alpha=10^{-3}$, 4 epochs \\
+MLP & CM & 1 & 64 units, $\alpha=10^{-4}$, 1 epochs \\
+MLP & CM & 2 & 64 units, $\alpha=10^{-3}$, 74 epochs \\
+MLP & CM & 3 & 128--64 units, $\alpha=10^{-3}$, 18 epochs \\
+MLP & CM & 4 & 64 units, $\alpha=10^{-4}$, 79 epochs \\
+MLP & Heme & 0 & 128--64 units, $\alpha=10^{-4}$, 3 epochs \\
+MLP & Heme & 1 & 64 units, $\alpha=10^{-4}$, 3 epochs \\
+MLP & Heme & 2 & 128--64 units, $\alpha=10^{-4}$, 2 epochs \\
+MLP & Heme & 3 & 128--64 units, $\alpha=10^{-3}$, 4 epochs \\
+MLP & Heme & 4 & 64 units, $\alpha=10^{-4}$, 2 epochs \\
+MLP & MH & 0 & 128--64 units, $\alpha=10^{-3}$, 9 epochs \\
+MLP & MH & 1 & 64 units, $\alpha=10^{-3}$, 3 epochs \\
+MLP & MH & 2 & 128--64 units, $\alpha=10^{-4}$, 1 epochs \\
+MLP & MH & 3 & 64 units, $\alpha=10^{-4}$, 18 epochs \\
+MLP & MH & 4 & 64 units, $\alpha=10^{-4}$, 9 epochs \\
+Pooled MLP & CM & 0 & 64 units, $\alpha=10^{-3}$, 15 epochs \\
+Pooled MLP & CM & 1 & 128--64 units, $\alpha=10^{-4}$, 14 epochs \\
+Pooled MLP & CM & 2 & 64 units, $\alpha=10^{-4}$, 18 epochs \\
+Pooled MLP & CM & 3 & 128--64 units, $\alpha=10^{-3}$, 4 epochs \\
+Pooled MLP & CM & 4 & 128--64 units, $\alpha=10^{-3}$, 8 epochs \\
+Pooled MLP & Heme & 0,3 & 64 units, $\alpha=10^{-4}$, 8 epochs \\
+Pooled MLP & Heme & 1 & 128--64 units, $\alpha=10^{-4}$, 4 epochs \\
+Pooled MLP & Heme & 2 & 64 units, $\alpha=10^{-4}$, 5 epochs \\
+Pooled MLP & Heme & 4 & 128--64 units, $\alpha=10^{-4}$, 19 epochs \\
+Pooled MLP & MH & 0 & 64 units, $\alpha=10^{-4}$, 5 epochs \\
+Pooled MLP & MH & 1 & 64 units, $\alpha=10^{-4}$, 1 epochs \\
+Pooled MLP & MH & 2 & 64 units, $\alpha=10^{-4}$, 20 epochs \\
+Pooled MLP & MH & 3 & 128--64 units, $\alpha=10^{-3}$, 9 epochs \\
+Pooled MLP & MH & 4 & 64 units, $\alpha=10^{-4}$, 4 epochs \\
+Bridge logistic regression & CM & 0,1,2,3,4 & $C=0.1$ \\
+Bridge logistic regression & Heme & 0,1,2,3,4 & $C=0.1$ \\
+Bridge logistic regression & MH & 0,1,2,3,4 & $C=0.01$ \\
+\hline
+\end{tabular}

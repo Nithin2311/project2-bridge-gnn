@@ -72,7 +72,10 @@ for target in agg["target"].unique().to_list():
         fpr, tpr, _ = roc_curve(y, p)
         prec, rec, _ = precision_recall_curve(y, p)
         axes[0].plot(fpr, tpr, label=run_id, lw=1)
-        axes[1].plot(rec, prec, label=run_id, lw=1)
+        if run_id == "B-prevalence":
+            axes[1].axhline(y.mean(), label=run_id, lw=1)
+        else:
+            axes[1].step(rec, prec, where="post", label=run_id, lw=1)
     axes[0].plot([0, 1], [0, 1], "k--", lw=0.6); axes[0].set_xlabel("false positive rate"); axes[0].set_ylabel("true positive rate"); axes[0].set_title(f"ROC, {target} (first seed)")
     axes[1].set_xlabel("recall"); axes[1].set_ylabel("precision"); axes[1].set_title(f"PR, {target} (first seed)")
     axes[0].legend(fontsize=7, frameon=False)
