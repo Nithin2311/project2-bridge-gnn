@@ -91,6 +91,13 @@ def main() -> None:
         strongest_gnn = max(ap(r, t) for r in ("G-gcn", "G-sage", "G-gat"))
         notes.append(f"For {short}, {BASELINES[winner].lower()} had the highest observed baseline mean "
                      f"AUPRC ({ap(winner, t):.3f}), and the highest GNN mean was {strongest_gnn:.3f}.")
+    bridge = "B-bridge_lr"
+    brier = ", ".join(f"{stats[(bridge, t)]['brier_mean']:.3f}" for t in TARGETS)
+    prior = ", ".join(f"{stats[('B-prevalence', t)]['brier_mean']:.3f}" for t in TARGETS)
+    notes.append(f"The bridge logistic model's mean Brier scores were {brier}, compared with "
+                 f"{prior} for the prevalence comparator, in target order.")
+    notes.append("Bridge logistic regression includes utilization and demographics, so these scores "
+                 "combine their signal with the bridge summaries.")
     if args.paired:
         paired = pl.read_csv(args.paired).filter(
             (pl.col("run_id") == "G-sage") & (pl.col("seed") == 0)
@@ -118,7 +125,11 @@ def main() -> None:
         relation = "above" if real > hi else "below" if real < lo else "within"
         null_notes.append(f"For {short}, the observed-edge mean ({real:.3f}) was {relation} the rewire range "
                           f"({lo:.3f}--{hi:.3f}), and the shuffled-edge mean was {shuffled:.3f}.")
-    write("null-summary", " ".join(null_notes) + " These contrasts give descriptive evidence about edge topology.")
+    conclusion = ("The observed graph remained within the rewire range on every target. The learned scores "
+                  "therefore provide limited evidence of an advantage from the particular Layer~U edges.")
+    if not all(lo <= ap("G-sage", t) <= hi for t, (lo, hi) in ranges.items()):
+        conclusion = "These contrasts are descriptive because the experiment used five rewired graphs."
+    write("null-summary", " ".join(null_notes) + " " + conclusion)
 
     configs = []
     for run, label in BASELINES.items():

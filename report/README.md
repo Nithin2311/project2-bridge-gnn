@@ -14,6 +14,6 @@ uv run python scripts/08_report_baselines.py
 ```
 
 The generator defaults to the archived GNN run aggregates for C1 and D1. Use
-`--gnn-runs` with the results of a fresh full ablation grid. Use `--paired`
+`--gnn-runs` with the results of a fresh full ablation grid. Use `--paired outputs/eval/tables/paired.csv`
 with a step 08 paired table when GNN and baseline prediction files were scored
 together. Aggregated GNN results alone support descriptive point comparisons.
