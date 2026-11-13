@@ -25,6 +25,8 @@ def expand(experiments: dict, cfg: dict, ids: list[str] | None) -> list[dict]:
         run_id, base = entry["id"], entry["base"]
         if base == "script" or (ids is not None and run_id not in ids):
             continue
+        if base not in SCRIPTS:
+            raise ValueError(f"{run_id}: unknown base {base!r}; expected one of {sorted(SCRIPTS)} or 'script'")
         targets = cfg["task"]["primary_targets"] if entry["targets"] == "primary" else entry["targets"]
         overrides = entry.get("overrides", {}).copy()
         seeds = overrides.pop("seeds", cfg["seeds"])
@@ -65,8 +67,8 @@ def write_subsamples(jobs: list[dict], rows: pl.DataFrame, cfg: dict) -> None:
             continue
         for seed in job["seeds"]:
             path = config.REPO_ROOT / template.format(seed=seed)
-            if path in written:
-                continue
+            if path in written or path.exists():
+                continue   # never overwrite an archived patient list: earlier runs must stay reproducible
             path.parent.mkdir(parents=True, exist_ok=True)
             ids = subsample_patients(people, job["subsample"], seed)
             path.write_text("".join(f"{pid}\n" for pid in ids), encoding="utf-8")

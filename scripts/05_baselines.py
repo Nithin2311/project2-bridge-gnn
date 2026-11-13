@@ -34,7 +34,7 @@ def upsert_result(path: Path, result: dict) -> None:
         if path.exists():
             row = pl.concat([contract.read(path, "results"), row]).unique(
                 ["run_id", "target", "seed"], keep="last", maintain_order=True)
-        pending = path.with_name("baselines.pending.csv")
+        pending = path.with_suffix(".pending.csv")
         contract.write(row, pending, "results")
         pending.replace(path)
 

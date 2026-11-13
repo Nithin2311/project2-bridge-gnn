@@ -83,3 +83,25 @@ def test_mlp_grouped_stopping_is_reproducible(monkeypatch):
     b = tabular.select("mlp", X, y, groups, 0)
     assert a[0] == b[0] and a[1] == b[1] and a[2].equals(b[2])
     assert 1 <= a[0]["refit_epochs"] <= params["max_iter"]
+
+
+def test_class_weighted_models_are_prior_corrected():
+    """Balanced class weights shift logits by log(n_neg/n_pos); predictions must be put back on the prevalence scale."""
+    import numpy as np
+
+    from bridgegnn import tabular
+    rng = np.random.default_rng(0)
+    n = 600
+    X = rng.normal(size=(n, 4))
+    y = rng.uniform(size=n) < 0.08
+    est, _, _ = tabular._fit("lr", {"C": 1.0, "class_weight": "balanced", "max_iter": 500}, 0, X, y, np.arange(n))
+    p = tabular._probability(est, X)
+    assert abs(p.mean() - y.mean()) < 0.03, f"mean prediction {p.mean():.3f} vs prevalence {y.mean():.3f}"
+    est_h, _, _ = tabular._fit("hgb", {"learning_rate": 0.1, "max_leaf_nodes": 15, "max_iter": 50, "early_stopping": False, "class_weight": "balanced"}, 0, X, y, np.arange(n))
+    assert abs(tabular._probability(est_h, X).mean() - y.mean()) < 0.06
+
+
+def test_hgb_grid_tunes_boosting_rounds():
+    from bridgegnn import tabular
+    iters = {g["max_iter"] for g in tabular.grid("hgb")}
+    assert len(iters) >= 3 and 300 in iters and min(iters) <= 50

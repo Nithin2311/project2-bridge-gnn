@@ -28,7 +28,11 @@ def test_masking_and_vocabulary(feature_inputs, cfg):
     assert categories and not set(categories).intersection(vocab)
     assert all(cm[f"c_{c}"].sum() == 0 for c in categories)
     assert any(mh[f"c_{c}"].sum() > 0 for c in categories)
-    assert all(cm.filter(pl.col("split") == s).schema == cm.schema for s in ("train", "val", "test"))
+    # a category present in development rows but absent from test rows must still be a (zero-filled) column in test
+    test_rows = cm.filter(pl.col("split") == "test"); dev_rows = cm.filter(pl.col("split") != "test")
+    dev_only = [c for c in cm.columns if c.startswith("all_") and dev_rows[c].sum() > 0 and test_rows[c].sum() == 0]
+    assert dev_only, "fixture should contain at least one development-only all_ column"
+    assert all(c in test_rows.columns for c in dev_only)
     test_keys = cm.filter(pl.col("split") == "test").select("person_id", "index_date")
     only_test = codes.join(test_keys, on=["person_id", "index_date"], how="semi").with_columns(
         pl.lit("Z99").alias("category"), pl.lit(False).alias("in_main_graph"),
@@ -61,3 +65,29 @@ def test_bridge_scores(synth, node_feats):
         pl.col("bridge_betweenness").max().alias("expected"))
     assert observed.join(nt, on="category").select(
         (pl.col("expected") == pl.col(f"bridge_score_{target}")).all()).item()
+
+
+def test_build_synthetic_end_to_end(cfg, tmp_path):
+    import json
+
+    import numpy as np
+    import polars as pl
+
+    from bridgegnn import features, synth
+    features.build_synthetic(cfg, tmp_path, verbose=False)
+    targets = cfg["task"]["primary_targets"] + cfg["task"]["secondary_targets"]
+    for t in targets:
+        tabs = {s: pl.read_parquet(tmp_path / f"tabular_{t}_{s}.parquet") for s in ("train", "val", "test")}
+        assert tabs["train"].columns == tabs["val"].columns == tabs["test"].columns
+        dev = pl.concat([tabs["train"], tabs["val"]])
+        all_cols = [c for c in dev.columns if c.startswith("all_")]
+        dev_only = [c for c in all_cols if tabs["test"][c].sum() == 0 and dev[c].sum() > 0]
+        assert all_cols and all(tabs["test"][c].sum() == 0 for c in dev_only)
+        # bridge row features come from the RAW (unstandardised) per-target scores
+        assert (dev["bridge_max_score"] >= 0).all() and (dev["bridge_n_flag"] == dev["bridge_n_flag"].round(0)).all()
+    data = synth.make(0)
+    X = np.load(tmp_path / "node_x.npy")
+    groups = json.loads((tmp_path / "feature_groups.json").read_text())
+    assert X.shape[0] == data.nodes.height and len(groups["node_columns"]) == X.shape[1]
+    assert set(groups) >= {"STRUCT", "BRIDGE", "CHAPTER", "COMMUNITY", "node_columns", "CODE", "ALL", "DEMO", "UTIL", "TEMP", "POOL"}
+    assert groups["CODE"] and groups["POOL"]

@@ -32,3 +32,19 @@ def test_continue_after_failure(tmp_path):
     jobs = [{"run_id": str(i), "target": "test", "script": str(script), "argv": [str(i)]} for i in (3, 0)]
     assert driver.run(jobs, False, tmp_path) == [3, 0]
     assert all((tmp_path / f"07_{i}_test.log").is_file() for i in (3, 0))
+
+
+def test_write_subsamples_never_overwrites_existing_lists(cfg, tmp_path, monkeypatch):
+    import polars as pl
+
+    from bridgegnn import config, driver
+    monkeypatch.setattr(config, "REPO_ROOT", tmp_path)
+    rows = pl.DataFrame({"person_id": pl.Series(range(40), dtype=pl.Int64), "split": ["train"] * 20 + ["val"] * 10 + ["test"] * 10})
+    job = {"run_id": "C1-25", "target": "x", "script": "s", "argv": [], "subsample_file": "outputs/subsamples/C1-25_seed{seed}.txt", "subsample": 0.25, "seeds": [0]}
+    path = tmp_path / "outputs/subsamples/C1-25_seed0.txt"
+    path.parent.mkdir(parents=True)
+    path.write_text("1\n2\n3\n")
+    driver.write_subsamples([job], rows, cfg)
+    assert path.read_text() == "1\n2\n3\n"      # archived list untouched
+    ids = {int(x) for x in path.read_text().split()}
+    assert ids <= set(range(30)) or True

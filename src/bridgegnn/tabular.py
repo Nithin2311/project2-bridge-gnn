@@ -54,9 +54,10 @@ def grid(model: str) -> list[dict]:
     if model in {"lr", "bridge_lr"}:
         return [{"C": c, "class_weight": "balanced", "max_iter": 2000} for c in (0.01, 0.1, 1.0)]
     if model in BOOSTERS:
-        return [{"learning_rate": rate, "max_leaf_nodes": leaves, "max_iter": 300,
+        # the number of boosting rounds is tuned (design section 7: baselines tuned as carefully as the GNNs)
+        return [{"learning_rate": rate, "max_leaf_nodes": leaves, "max_iter": rounds,
                  "early_stopping": False, "class_weight": "balanced"}
-                for rate, leaves in product((0.03, 0.1), (15, 31))]
+                for rate, leaves, rounds in product((0.03, 0.1), (15, 31), (50, 100, 300))]
     if model in MLPS:
         return [{"hidden_layer_sizes": layers, "alpha": alpha, "max_iter": 300, "early_stopping": True}
                 for layers, alpha in product(((64,), (128, 64)), (1e-4, 1e-3))]
@@ -77,10 +78,24 @@ def make(model: str, params: dict, seed: int):
     raise ValueError(f"unknown baseline {model!r}")
 
 
+def _prior_shift(y: np.ndarray, params: dict) -> float:
+    """log(n_neg/n_pos) induced by class_weight='balanced'; removed at prediction so probabilities sit on the
+    prevalence scale (same correction as step 06's logit_shift). Ranking metrics and selection are unaffected."""
+    if params.get("class_weight") != "balanced":
+        return 0.0
+    n_pos, n_neg = int(np.sum(y)), int(len(y) - np.sum(y))
+    return float(np.log(n_neg / n_pos)) if n_pos and n_neg else 0.0
+
+
 def _probability(estimator, X: np.ndarray) -> np.ndarray:
     p = estimator.predict_proba(X)
     labels = estimator.classes_
-    return p[:, list(labels).index(True)] if True in labels else np.zeros(len(X))
+    p = p[:, list(labels).index(True)] if True in labels else np.zeros(len(X))
+    shift = float(getattr(estimator, "_logit_shift", 0.0))
+    if shift:
+        p = np.clip(p, 1e-6, 1 - 1e-6)
+        p = 1.0 / (1.0 + np.exp(-(np.log(p / (1 - p)) - shift)))
+    return p
 
 
 def _fit(model, params, seed, X, y, groups, epochs=None):
@@ -88,7 +103,9 @@ def _fit(model, params, seed, X, y, groups, epochs=None):
         return make("prevalence", {}, seed).fit(X, y), None, []
     est = make(model, params, seed)
     if model not in MLPS:
-        return est.fit(X, y), None, []
+        est.fit(X, y)
+        est._logit_shift = _prior_shift(y, params)
+        return est, None, []
 
     scaler, mlp = est.steps[0][1], est.steps[1][1]
     max_epochs = params["max_iter"]
