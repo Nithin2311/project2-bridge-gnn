@@ -112,6 +112,8 @@ def main() -> None:
                 values.append(rf"{row['d_auprc']:+.3f} (95\% CI {row['d_auprc_lo']:+.3f} to {row['d_auprc_hi']:+.3f})")
             notes.append(f"For {short}, the jointly evaluated seed-0 GraphSAGE differences relative to all-code "
                          f"boosting and pooled MLP were {values[0]} and {values[1]}, respectively.")
+        if paired.height == 6 and (paired["d_auprc_lo"] <= 0).all() and (paired["d_auprc_hi"] >= 0).all():
+            notes.append("All six paired AUPRC intervals included zero.")
     write("baseline-results-summary", " ".join(notes))
     scale_notes = []
     for label, full, quarter in [("GraphSAGE", "G-sage", "C1-25"), ("boosting", "B-hgb", "C1-25-hgb")]:
