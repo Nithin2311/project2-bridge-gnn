@@ -62,3 +62,24 @@ def test_test_patients_only_used_for_predict(cfg, monkeypatch):
     monkeypatch.setattr(tabular, "make", original)
     preds, _ = tabular.run("prevalence", "mental_health", tables, cfg, seed=0)
     assert preds.filter(pl.col("split") == "test")["p"].n_unique() == 1
+
+
+def test_mlp_grouped_stopping_is_reproducible(monkeypatch):
+    rng = np.random.default_rng(11)
+    groups = np.repeat(np.arange(40), 3)
+    y = groups % 4 == 0
+    X = rng.normal(size=(len(groups), 4))
+    params = {"hidden_layer_sizes": (8,), "alpha": 0.001, "max_iter": 12, "early_stopping": True}
+    monkeypatch.setattr(tabular, "grid", lambda _: [params])
+    original = tabular.GroupShuffleSplit.split
+
+    def disjoint(self, X, y=None, groups=None):
+        for fit, valid in original(self, X, y, groups):
+            assert not set(groups[fit]).intersection(groups[valid])
+            yield fit, valid
+
+    monkeypatch.setattr(tabular.GroupShuffleSplit, "split", disjoint)
+    a = tabular.select("mlp", X, y, groups, 0)
+    b = tabular.select("mlp", X, y, groups, 0)
+    assert a[0] == b[0] and a[1] == b[1] and a[2].equals(b[2])
+    assert 1 <= a[0]["refit_epochs"] <= params["max_iter"]
