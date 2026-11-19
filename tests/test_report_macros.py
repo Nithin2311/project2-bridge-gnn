@@ -70,3 +70,15 @@ def test_cli_writes_file(tmp_path):
     out = tmp_path / "macros.tex"
     report_macros.main(["--artifacts", str(a), "--out", str(out)])
     assert out.exists() and "res:G-gat:mental_health:auroc_mean" in out.read_text()
+
+
+def test_macros_emit_strata_entries(tmp_path):
+    a = tree(tmp_path)
+    write(a, "eval/tables/strata.csv", pl.DataFrame({"stratum": ["sex", "sex", "sex"], "level": ["female", "male", "female"],
+                                                     "n": [1039, 713, 1039], "pos": [50, 41, 50], "auroc": [0.5722, 0.7546, 0.6],
+                                                     "auprc": [0.07, 0.17, 0.08], "run_id": ["G-sage"] * 3, "target": ["cancer_hematologic"] * 3,
+                                                     "seed": [0, 0, 1]}))
+    out = report_macros.build(a, None)
+    assert r"\csname strat:G-sage:cancer_hematologic:sex:female:auroc\endcsname{0.572}" in out   # first seed only
+    assert r"\csname strat:G-sage:cancer_hematologic:sex:male:pos\endcsname{41}" in out
+    assert r"\newcommand{\strat}[5]" in out
