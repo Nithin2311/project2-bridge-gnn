@@ -32,7 +32,8 @@ def parse_args(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--target", required=True, choices=contract.TARGETS)
-    ap.add_argument("--arch", required=True, choices=["gcn", "sage", "gat"])
+    ap.add_argument("--arch", required=True, choices=["gcn", "sage", "gat", "hetero"],
+                    help="hetero = bipartite patient-code variant (experiment B2): SAGE messages, readout from the patient node")
     ap.add_argument("--layer", default="U", choices=["U", "U-bb", "U-bh", "D", "N"])
     ap.add_argument("--features", default=",".join(ALL_FEATURES))
     ap.add_argument("--lookback", type=int, default=int(cfg["windows"]["primary_lookback"]), choices=[365, 1095, 0])

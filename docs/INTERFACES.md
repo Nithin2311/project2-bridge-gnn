@@ -44,7 +44,7 @@ uv run python scripts/06_gnn.py --run-id A1a --target cardiometabolic --arch sag
 |---|---|---|
 | `--run-id` | experiment id from `config/experiments.yaml`, or `G-<arch>` for the main comparison | required |
 | `--target` | as above | required |
-| `--arch` | gcn, sage, gat | required |
+| `--arch` | gcn, sage, gat, hetero (B2: bipartite patient--code variant; patient node from DEMO+UTIL, relation-specific SAGE messages, readout from the patient node) | required |
 | `--layer` | U (P1 main graph), U-bb (top-10 backbone), U-bh (BH-FDR edges), D (directed precedence), N (null graph; see `--null-graph`) | U |
 | `--features` | comma-joined subset of CODE, DEMO, UTIL, TEMP, STRUCT, BRIDGE | all six |
 | `--lookback` | 365, 1095, 0 (all) | 1095 |

@@ -32,7 +32,7 @@ experiments:
 
   # ---- B: graph structure ----
   - {id: B1,  family: B, base: gnn, targets: primary, overrides: {layer: D}, note: "directed precedence edges"}
-  # B2 (bipartite HeteroGNN) runs through scripts/06b_hetero.py, not the driver
+  - {id: B2,  family: B, base: gnn, targets: primary, overrides: {arch: hetero}, note: "bipartite patient-code heterogeneous GNN (extra credit, Option A): patient node from DEMO+UTIL, relation-specific SAGE messages, readout from the patient node"}
   - {id: B3,  family: B, base: gnn, targets: primary, overrides: {weighted: 0, arch: gcn}, note: "unweighted edges; GCN only (SAGEConv/GATConv ignore edge weights, so B3 compares against G-gcn)"}
   - {id: B4a, family: B, base: gnn, targets: primary, overrides: {layer: U-bh}, note: "BH-FDR edge filter instead of Bonferroni"}
   - {id: B4b, family: B, base: gnn, targets: primary, overrides: {layer: U-bb}, note: "top-10 per-node backbone"}

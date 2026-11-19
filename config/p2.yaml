@@ -77,7 +77,7 @@ eval:                        # step 08
   min_stratum_pos: 10        # strata with fewer positives are reported as n/a
   calib_bins: 10
   baselines_for_pairing: [B-hgb_all, B-mlp_pool]   # references for the GNN-vs-baseline paired deltas (step 05 predictions)
-  paired_gnn_runs: [G-gcn, G-sage, G-gat]          # only these runs are paired against the references (step 08 runtime)
+  paired_gnn_runs: [G-gcn, G-sage, G-gat, B2]      # only these runs are paired against the references (step 08 runtime)
   paired_runs:                                     # explicit pairings on identical test rows
     - [B5-P, B5-U]         # time-respecting graph vs Layer U, rows indexed >= 2020
     - [BT-P, BT-U]         # temporal backtest
@@ -86,6 +86,7 @@ eval:                        # step 08
     - [B1, G-sage]         # directed precedence edges
     - [D1-shuffle, G-sage] # edge-shuffled null graph
     - [D1-rewire0, G-sage] # degree-preserving rewired null graph
+    - [B2, G-sage]         # bipartite patient-code heterogeneous variant
 
 rebuild:                     # step 09: time-respecting graph (design 5a, experiment B5) and the temporal backtest
   cutoff: "2020-01-01"       # development records before this date rebuild the graph, cores, bridges, node features

@@ -254,7 +254,10 @@ linked to its code nodes (static + temporal node features), code-code edges from
 `HeteroConv` over SAGE/GAT layers; readout from the patient node. Designed so that, with citations and a
 comparison against all baselines, it can be presented as extra-credit Option A ("heterogeneous variant") if
 week 3 is on schedule; otherwise it ships as the rubric's bipartite-vs-diagnosis-only ablation. Decision point:
-end of week 3. **[decided 2026-11-06]**
+end of week 3. **[decided 2026-11-06]** **[implemented 2026-11-19 as `--arch hetero` in step 06 (no separate
+script): relation-specific SAGE messages code<-code, code<-patient, patient<-code summed per layer, the HeteroConv
+equivalent on the homogeneous batch; readout from the patient node; grid id B2; paired against both baselines and
+G-sage]**
 
 ## 7. Models
 

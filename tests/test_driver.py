@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import polars as pl
 import pytest
 
@@ -82,3 +84,10 @@ def test_write_subsamples_identical_across_families(cfg, tmp_path, monkeypatch):
         a = (tmp_path / cfg["paths"]["outputs"] / "subsamples" / f"C1-25_seed{seed}.txt").read_text()
         b = (tmp_path / cfg["paths"]["outputs"] / "subsamples" / f"C1-25-hgb_seed{seed}.txt").read_text()
         assert a == b and len(a.splitlines()) == 100
+
+
+def test_grid_contains_b2():
+    import yaml
+    grid = yaml.safe_load((Path(__file__).resolve().parents[1] / "config" / "experiments.yaml").read_text())
+    b2 = [e for e in grid["experiments"] if e["id"] == "B2"]
+    assert len(b2) == 1 and b2[0]["base"] == "gnn" and b2[0]["family"] == "B" and b2[0]["overrides"]["arch"] == "hetero"

@@ -21,7 +21,7 @@ BASELINES = {
     "B-bridge_lr": "Bridge logistic regression",
 }
 DETERMINISTIC = {"B-prevalence", "B-lr", "B-hgb", "B-hgb_all", "B-bridge_lr"}
-GNNS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT"}
+GNNS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT", "B2": "Bipartite hetero"}
 REWIRES = [f"D1-rewire{i}" for i in range(5)]
 SCALE = {
     "C1-25": r"GraphSAGE, 25\%", "C1-50": r"GraphSAGE, 50\%", "G-sage": r"GraphSAGE, 100\%",
