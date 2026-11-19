@@ -13,6 +13,7 @@ Patient-level files (`rows.parquet`, `row_codes.parquet`, `predictions/*.parquet
 | `layers/` | directed precedence edges (+ gap / day-one sensitivities), BH edges, layer statistics, directed edges into cores and through bridges | step 03 |
 | `motifs/` | triad census vs two nulls, bridge middle shares, bridge chains, motif figure | step 04 |
 | `pre2020/` | time-respecting rebuild summary, target definitions with anchor co-assignment, bridges, node features | step 09 |
+| `features_xcheck/` | one-off independent re-implementation of the step 02 node matrix (bit-identical to `node_x.npy`, 2026-11-13); not produced by `run_all.sh` | cross-check |
 
 Experiment ids follow `config/experiments.yaml`; G-* = main comparison, B5-*/BT-* = time-respecting graph and backtest.
 The main GNNs and four baselines also run on the secondary target `cancer_metastatic` (117 positives; reported in the

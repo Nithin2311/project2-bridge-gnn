@@ -75,7 +75,7 @@ export EHRSHOT_DATA="/path/to/FinalProject/data"
 uv run python scripts/compare_runs.py /path/to/reference/outputs/artifacts outputs/artifacts --md REPRODUCTION.md
 ```
 
-`run_all.sh` runs the labels `00 01 02 03 04 05 06 07 09 08 08b macros collect` in order (05 = all tabular baselines through
+`run_all.sh` runs the labels `00 01 02 03 04 05 06 07 09 08 08b collect macros` in order (05 = all tabular baselines through
 the step 07 driver, 06 = the main GNN comparison, 07 = the remaining grid, 08b = the report fragments), appends
 timestamped START/END lines per label to `outputs/logs/run_all.log`, stops at the first failure and resumes with
 `--from <label>`. Approximate runtimes on an M4 (CPU): 00 2 min, 01 4 min, 02 1 min, 03 10 s, 04 3 min, 05 1.5 h,

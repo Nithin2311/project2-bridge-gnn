@@ -112,3 +112,18 @@ def test_compare_null_key_cells_still_align(tmp_path):
     write(old, "layers/directed_summary.csv", df); write(new, "layers/directed_summary.csv", df)
     out = compare.compare_dirs(old, new).filter(pl.col("file") == "layers/directed_summary.csv")
     assert set(out["status"].to_list()) == {"exact"}
+
+
+def test_compare_params_json_ignores_path_and_identity_keys(tmp_path):
+    a = '{"lr": 0.001, "node_features_dir": "/Users/a/project2-bridge-gnn/outputs/features", "layer_file": "/Users/a/x/outputs/pre2020/graph.graphml", "run_id": "G-sage"}'
+    b = '{"lr": 0.001, "node_features_dir": "/Volumes/b/project2-bridge-gnn-rerun/outputs/features_xcheck", "layer_file": "/tmp/y/outputs/pre2020/graph.graphml", "run_id": "G-sage"}'
+    old, new = two_trees(tmp_path, new_gnn=gnn_rows(params=b))
+    write(old, "results/gnn.csv", gnn_rows(params=a))
+    assert status_of(compare.compare_dirs(old, new), "results/gnn.csv", "params_json") == "exact"
+    c = b.replace('"lr": 0.001', '"lr": 0.0003')
+    write(new, "results/gnn.csv", gnn_rows(params=c))
+    assert status_of(compare.compare_dirs(old, new), "results/gnn.csv", "params_json") == "exceeds"
+
+
+def test_compare_npy_only_main_matrix(tmp_path):
+    assert compare.NPY_FILES == ["node_x.npy"]

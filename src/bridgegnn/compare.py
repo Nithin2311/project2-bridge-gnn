@@ -13,7 +13,7 @@ import numpy as np
 import polars as pl
 
 CSV_DIRS = ["results", "eval/tables", "layers", "motifs", "pre2020"]
-NPY_FILES = ["node_x.npy", "features_xcheck/node_x.npy"]
+NPY_FILES = ["node_x.npy"]
 TORCH_FILES = {"results/gnn.csv", "eval/tables/runs.csv", "eval/tables/runs_agg.csv", "eval/tables/runs_agg_rounded.csv",
                "eval/tables/paired.csv", "eval/tables/reliability.csv", "eval/tables/strata.csv"}
 DETERMINISTIC_MODELS = {"prevalence", "lr", "hgb", "hgb_all", "bridge_lr"}
@@ -105,11 +105,18 @@ def _keys_as_text(df: pl.DataFrame, keys: list[str]) -> pl.DataFrame:
     return df.with_columns([pl.col(k).cast(pl.Utf8).fill_null("<null>") for k in keys])
 
 
+# machine-specific paths and row identity inside params_json carry no hyperparameter information
+IGNORED_PARAM_KEYS = {"node_features_dir", "layer_file", "subsample_file", "run_id", "target"}
+
+
 def _canon_json(s: str) -> str:
     try:
-        return json.dumps(json.loads(s), sort_keys=True)
+        d = json.loads(s)
     except (ValueError, TypeError):
         return s
+    if isinstance(d, dict):
+        d = {k: v for k, v in d.items() if k not in IGNORED_PARAM_KEYS}
+    return json.dumps(d, sort_keys=True)
 
 
 def _compare_npy(rel: str, old_f: Path, new_f: Path) -> dict:

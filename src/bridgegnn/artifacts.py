@@ -18,9 +18,6 @@ PATTERNS: list[tuple[str, str]] = [
     ("pre2020/bridges.csv", "pre2020"),
     ("pre2020/target_definitions.csv", "pre2020"),
     ("pre2020/node_features.csv", "pre2020"),
-    ("features_xcheck/node_index.csv", "features_xcheck"),
-    ("features_xcheck/node_x.npy", "features_xcheck"),
-    ("features_xcheck/feature_groups.json", "features_xcheck"),
     # step 02 writes nodes.csv, graph_edges.csv and construction_thresholds.json straight into outputs/artifacts/
     ("features/node_index.csv", ""),
     ("features/node_x.npy", ""),
@@ -35,9 +32,19 @@ def _check_safe(path: Path) -> None:
         raise ValueError(f"refusing to collect a patient-level file type: {path}")
 
 
+COLLECTED_SUBDIRS = sorted({sub for _, sub in PATTERNS if sub})
+
+
 def collect(out: Path, dest: Path) -> list[Path]:
-    """Copy every file matching PATTERNS from `out` into `dest`; missing sources are skipped (partial trees are legal)."""
+    """Copy every file matching PATTERNS from `out` into `dest`; missing sources are skipped (partial trees are legal).
+
+    The collected subdirectories of `dest` are emptied first so a file the current run did not produce cannot survive
+    from an earlier run or from the git checkout; top-level files (written directly by step 02) are left alone.
+    """
     out, dest = Path(out), Path(dest)
+    for sub in COLLECTED_SUBDIRS:
+        if (dest / sub).exists():
+            shutil.rmtree(dest / sub)
     copied = []
     seen: dict[Path, Path] = {}
     for pattern, sub in PATTERNS:

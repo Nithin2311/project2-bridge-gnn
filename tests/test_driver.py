@@ -66,3 +66,19 @@ def test_same_fraction_and_seed_give_identical_subsets():
     ids = pl.Series("person_id", list(range(1, 401)) * 3)
     assert driver.subsample_patients(ids, 0.25, 3) == driver.subsample_patients(ids, 0.25, 3)
     assert driver.subsample_patients(ids, 0.25, 3) != driver.subsample_patients(ids, 0.25, 4)
+
+
+def test_write_subsamples_identical_across_families(cfg, tmp_path, monkeypatch):
+    """C1-25 (GNN) and C1-25-hgb (boosting) must train on the same patients: both lists come from the same sampler."""
+    monkeypatch.setattr(driver.config, "REPO_ROOT", tmp_path)
+    rows = pl.DataFrame({"person_id": pl.Series(list(range(1, 401)) * 2, dtype=pl.Int64),
+                         "split": ["train"] * 400 + ["val"] * 400})
+    grid = {"default_arch": "sage", "experiments": [
+        {"id": "C1-25", "family": "C", "base": "gnn", "targets": "primary", "overrides": {"subsample": 0.25}},
+        {"id": "C1-25-hgb", "family": "C", "base": "baseline", "targets": "primary", "overrides": {"model": "hgb", "subsample": 0.25}}]}
+    jobs = driver.expand(grid, cfg, None)
+    driver.write_subsamples(jobs, rows, cfg)
+    for seed in cfg["seeds"]:
+        a = (tmp_path / cfg["paths"]["outputs"] / "subsamples" / f"C1-25_seed{seed}.txt").read_text()
+        b = (tmp_path / cfg["paths"]["outputs"] / "subsamples" / f"C1-25-hgb_seed{seed}.txt").read_text()
+        assert a == b and len(a.splitlines()) == 100
