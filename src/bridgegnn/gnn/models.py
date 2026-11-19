@@ -1,4 +1,5 @@
-"""SubgraphGNN: GCN / GraphSAGE / GAT over a patient subgraph, mean+max readout, covariate head."""
+"""SubgraphGNN: GCN / GraphSAGE / GAT over a patient subgraph, mean+max readout, covariate head.
+HeteroSubgraphGNN: the bipartite patient--code variant (experiment B2), readout from the patient node."""
 from __future__ import annotations
 
 import torch
@@ -53,3 +54,55 @@ class SubgraphGNN(nn.Module):
         if self.cov_dim:
             g = torch.cat([g, cov.reshape(g.shape[0], -1)], dim=1)
         return self.head(g).squeeze(-1)
+
+
+class HeteroSubgraphGNN(nn.Module):
+    """Two node types per row: the patient (initial state from the covariates) and its codes (node features + CODE
+    embedding). Each layer sums three relation-specific SAGE-style messages: code<-code over the Layer U edges
+    (SAGEConv, mean), code<-patient (the patient state broadcast to its codes) and patient<-code (mean of the patient's
+    codes); this is PyG HeteroConv(aggr="sum") over SAGEConvs on the (patient, code) graph, computed on the homogeneous
+    batch. The prediction is read from the patient node, so covariates enter only through it."""
+
+    def __init__(self, arch: str, in_dim: int, cov_dim: int, hidden: int, depth: int, dropout: float, heads: int,
+                 agg: str, n_nodes: int, embedding_dim: int, use_embedding: bool):
+        super().__init__()
+        assert arch == "hetero"
+        self.arch, self.dropout, self.cov_dim = arch, dropout, cov_dim
+        self.embedding = nn.Embedding(n_nodes + 1, embedding_dim) if use_embedding else None
+        d_in = in_dim + (embedding_dim if use_embedding else 0)
+        self.patient_in = nn.Linear(cov_dim, hidden) if cov_dim else None
+        self.patient_init = nn.Parameter(torch.zeros(hidden)) if not cov_dim else None
+        self.code_code = nn.ModuleList()
+        self.code_from_patient = nn.ModuleList()
+        self.patient_self = nn.ModuleList()
+        self.patient_from_code = nn.ModuleList()
+        for layer in range(depth):
+            d = d_in if layer == 0 else hidden
+            self.code_code.append(SAGEConv(d, hidden, aggr=agg))
+            self.code_from_patient.append(nn.Linear(hidden, hidden, bias=False))
+            self.patient_self.append(nn.Linear(hidden, hidden))
+            self.patient_from_code.append(nn.Linear(d, hidden, bias=False))
+        self.head = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Dropout(dropout), nn.Linear(hidden, 1))
+
+    def forward(self, x, edge_index, edge_weight, node_ids, batch, cov):
+        n_graphs = int(batch.max().item()) + 1 if batch.numel() else cov.reshape(-1, max(self.cov_dim, 1)).shape[0]
+        h = x
+        if self.embedding is not None:
+            h = torch.cat([h, self.embedding(node_ids + 1)], dim=1)
+        if self.patient_in is not None:
+            p = self.patient_in(cov.reshape(n_graphs, -1))
+        else:
+            p = self.patient_init.unsqueeze(0).expand(n_graphs, -1)
+        for cc, cp, ps, pc in zip(self.code_code, self.code_from_patient, self.patient_self, self.patient_from_code):
+            h_new = cc(h, edge_index) + cp(p)[batch]
+            p_new = ps(p) + pc(global_mean_pool(h, batch, size=n_graphs))
+            h = F.dropout(F.relu(h_new), p=self.dropout, training=self.training)
+            p = F.dropout(F.relu(p_new), p=self.dropout, training=self.training)
+        return self.head(p).squeeze(-1)
+
+
+def build_model(**kwargs) -> nn.Module:
+    """Model for `arch`: gcn / sage / gat -> SubgraphGNN; hetero -> HeteroSubgraphGNN (experiment B2)."""
+    arch = kwargs["arch"]
+    assert arch in {"gcn", "sage", "gat", "hetero"}, f"unknown arch {arch!r}"
+    return HeteroSubgraphGNN(**kwargs) if arch == "hetero" else SubgraphGNN(**kwargs)

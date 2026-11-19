@@ -25,7 +25,7 @@ from torch_geometric.loader import DataLoader
 
 from .. import contract
 from .data import Example, apply_cov_scaler, fit_cov_scaler
-from .models import SubgraphGNN, to_pyg
+from .models import SubgraphGNN, build_model, to_pyg
 
 
 def set_seed(seed: int) -> None:
@@ -74,7 +74,7 @@ def fit(train_ex: list[Example], val_ex: list[Example], params: dict, seed: int,
         model_kwargs: dict) -> tuple[SubgraphGNN, int, dict]:
     """Early stopping on val AUPRC when val_ex is given; otherwise exactly params['epochs'] epochs."""
     set_seed(seed)
-    model = SubgraphGNN(**model_kwargs)
+    model = build_model(**model_kwargs)
     opt = torch.optim.Adam(model.parameters(), lr=float(params["lr"]), weight_decay=float(params.get("weight_decay", 0.0)))
     y = np.array([e.y for e in train_ex], dtype=np.float64)
     n_pos, n_neg = y.sum(), len(y) - y.sum()

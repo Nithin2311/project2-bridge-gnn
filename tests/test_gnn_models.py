@@ -29,10 +29,10 @@ def make_examples(n=8, n_nodes_total=20, f=5, cov=3, seed=0, virtual_only=False)
     return exs
 
 
-@pytest.mark.parametrize("arch", ["gcn", "sage", "gat"])
+@pytest.mark.parametrize("arch", ["gcn", "sage", "gat", "hetero"])
 def test_forward_shapes_and_finite(arch):
     exs = make_examples()
-    m = models.SubgraphGNN(arch, in_dim=5, cov_dim=3, hidden=16, depth=2, dropout=0.1, heads=4, agg="mean",
+    m = models.build_model(arch=arch, in_dim=5, cov_dim=3, hidden=16, depth=2, dropout=0.1, heads=4, agg="mean",
                            n_nodes=20, embedding_dim=8, use_embedding=True)
     batch = next(iter(DataLoader(models.to_pyg(exs), batch_size=4)))
     out = m(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
@@ -76,3 +76,33 @@ def test_to_pyg_keeps_row_positions_and_labels():
     ds = models.to_pyg(exs)
     assert [int(d.row_pos) for d in ds] == list(range(len(exs))) and [float(d.y) for d in ds] == [float(e.y) for e in exs]
     assert ds[0].cov.shape == (1, 3)
+
+
+def _kw(arch="hetero", f=5, cov=3, **over):
+    kw = {"arch": arch, "in_dim": f, "cov_dim": cov, "hidden": 16, "depth": 2, "dropout": 0.1, "heads": 4, "agg": "mean",
+          "n_nodes": 20, "embedding_dim": 4, "use_embedding": True}
+    kw.update(over)
+    return kw
+
+
+def test_build_model_dispatch():
+    assert isinstance(models.build_model(**_kw("sage")), models.SubgraphGNN)
+    assert isinstance(models.build_model(**_kw("hetero")), models.HeteroSubgraphGNN)
+    with pytest.raises(AssertionError):
+        models.build_model(**_kw("rgcn"))
+
+
+def test_hetero_virtual_only_rows():
+    exs = make_examples(n=6, virtual_only=True)
+    batch = next(iter(DataLoader(models.to_pyg(exs), batch_size=6)))
+    model = models.build_model(**_kw()).eval()
+    out = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
+    assert out.shape == (6,) and torch.isfinite(out).all()
+
+
+def test_hetero_without_covariates():
+    exs = make_examples(n=5, cov=0)
+    batch = next(iter(DataLoader(models.to_pyg(exs), batch_size=5)))
+    model = models.build_model(**_kw(cov=0)).eval()
+    out = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
+    assert out.shape == (5,) and torch.isfinite(out).all()

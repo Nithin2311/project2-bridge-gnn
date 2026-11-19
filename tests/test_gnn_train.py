@@ -134,3 +134,11 @@ def test_run_handles_virtual_only_rows(tmp_path, setup):
     res = train.run("T-empty", "mental_health", dev, test, [{"lr": 1e-3, "weight_decay": 0.0}], [0], CFG, setup["kwargs"],
                     {"arch": "sage"}, tmp_path, setup["names"])
     assert len(res) == 1 and np.isfinite(res[0]["test_brier"])
+
+
+def test_fit_hetero_returns_finite_predictions(setup):
+    dev, test = setup["dev"], setup["test"]
+    model, epochs, _curves = train.fit(dev, None, {"lr": 1e-3, "weight_decay": 0.0, "epochs": 2}, 0, CFG["gnn"],
+                                      {**setup["kwargs"], "arch": "hetero"})
+    p = train.predict(model, test)
+    assert len(p) == len(test) and np.isfinite(p).all() and epochs == 2 and p.min() >= 0 and p.max() <= 1
