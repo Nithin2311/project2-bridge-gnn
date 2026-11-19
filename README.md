@@ -58,8 +58,38 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 | 07 | `07_experiments.py` — drives the experiment grid | D (done) |
 | 08 | `08_evaluate.py` — patient-bootstrap CIs, calibration, F1 at the dev threshold, strata, paired deltas, ROC/PR/curve figures, LaTeX tables | N (done) |
 | 09 | `09_pre2020_graph.py` — pre-2020 rebuild (P1 rules) and the B5 / backtest runs via step 06 | N (done) |
+| all | `run_all.sh` — the labels above in order, logged, resumable; `collect_artifacts.py`, `compare_runs.py` | N (done) |
 
-## Reproduce the tabular comparison
+## Reproduce from scratch
+
+Everything in `outputs/artifacts/` comes from one command on a fresh clone. Project 1 must sit at
+`../project1-bridge-dx` with its frozen `outputs/` (run of 2026-10-23); the EHRShot CSVs live wherever `EHRSHOT_DATA`
+points (default `../FinalProject/data`).
+
+```bash
+git clone https://github.com/Nithin2311/project2-bridge-gnn.git && cd project2-bridge-gnn
+uv sync --extra dev --extra gnn
+export EHRSHOT_DATA="/path/to/FinalProject/data"
+./scripts/run_all.sh --check            # tests, dry run of the grid, input check (~2 min)
+./scripts/run_all.sh                    # ~9 h on an M4: grid ~6 h, baselines ~1.5 h, evaluation < 15 min
+uv run python scripts/compare_runs.py /path/to/reference/outputs/artifacts outputs/artifacts --md REPRODUCTION.md
+```
+
+`run_all.sh` runs the labels `00 01 02 03 04 05 06 07 09 08 08b collect` in order (05 = all tabular baselines through
+the step 07 driver, 06 = the main GNN comparison, 07 = the remaining grid, 08b = the report fragments), appends
+timestamped START/END lines per label to `outputs/logs/run_all.log`, stops at the first failure and resumes with
+`--from <label>`. Approximate runtimes on an M4 (CPU): 00 2 min, 01 4 min, 02 1 min, 03 10 s, 04 3 min, 05 1.5 h,
+06 15 min, 07 6 h, 09 11 min, 08 < 15 min.
+
+`collect_artifacts.py` copies the aggregate set (`bridgegnn.artifacts.PATTERNS`: results, evaluation tables and
+figures, layers, motifs, pre-2020 summary, node feature matrices) into `outputs/artifacts/`; it refuses parquet and
+patient-list files, so nothing patient-level can land there. `compare_runs.py` then checks the new tree against a
+reference tree table by table: `exact` means identical; `within_tol` is allowed only for torch-dependent numbers
+(GNN rows of `results/gnn.csv` and the step 08 tables) up to 0.02; everything else, including the selected
+hyperparameters in `params_json`, must match exactly. The fresh-clone comparison that produced the committed
+artifacts is recorded in `outputs/artifacts/REPRODUCTION.md`.
+
+### Only the tabular comparison
 
 ```bash
 uv run python scripts/02_features.py
@@ -72,8 +102,9 @@ If the Project 1 handoff and step 01 files are stored separately, pass their dir
 patient subsampling and step 08 evaluation. Step 02 and step 05 also accept `--synthetic` for a local smoke run.
 The driver accepts `--dry-run` to list resolved commands and `--ids` to rerun selected experiments.
 
-The main model comparison uses the three primary targets. Step 02 also exports feature tables for the secondary
-target. The report fragments in `report/` describe the non-graph comparison and its reproducible inputs.
+The main model comparison uses the three primary targets; the main GNNs and four baselines also run on the
+underpowered secondary target (`targets: all` in the grid). The report fragments in `report/` describe the
+non-graph comparison and its reproducible inputs.
 
 ## Branches
 
