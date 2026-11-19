@@ -90,7 +90,7 @@ Reads `config/experiments.yaml`. Each entry:
 - id: A1a
   family: A
   base: gnn            # gnn -> scripts/06_gnn.py ; baseline -> scripts/05_baselines.py
-  targets: primary     # or an explicit list
+  targets: primary     # primary | secondary | all (primary + secondary) | an explicit list
   overrides: {features: "CODE,DEMO,UTIL,TEMP,STRUCT"}   # merged over the step's defaults as CLI flags
   note: "full features minus BRIDGE (features only)"
 ```

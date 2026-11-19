@@ -426,8 +426,10 @@ config); log format.
 ## 15. Open questions for the humans
 
 1. Dylan's blocks and whether the owner column in section 10 is acceptable to him. **[open]**
-2. Should cancer_metastatic be dropped from the report entirely rather than shown as underpowered? **[open,
-   default: shown as secondary]**
+2. Should cancer_metastatic be dropped from the report entirely rather than shown as underpowered? **[closed
+   2026-11-19: kept as a secondary target with the same selection protocol (hyperparameters chosen on its own
+   development rows); the main GNNs and four baselines run on it via `targets: all`; reported in the supplement,
+   flagged underpowered (117 positives)]**
 3. Does Dr. Kim expect the directed layer to replace the undirected graph as the primary model input, or to be
    an experiment as designed here (B1)? **[open, default: B1; ask at office hours]**
 4. Extra credit: promote B2 to Option A or not. **[decision point end of week 3]**

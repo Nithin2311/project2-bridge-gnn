@@ -14,6 +14,20 @@ from . import config
 SCRIPTS = {"baseline": "scripts/05_baselines.py", "gnn": "scripts/06_gnn.py"}
 
 
+def resolve_targets(spec: str | list[str], cfg: dict) -> list[str]:
+    """`primary`, `secondary`, `all` (primary + secondary) from config/p2.yaml, or an explicit list."""
+    if isinstance(spec, list):
+        return list(spec)
+    task = cfg["task"]
+    if spec == "primary":
+        return list(task["primary_targets"])
+    if spec == "secondary":
+        return list(task["secondary_targets"])
+    if spec == "all":
+        return list(task["primary_targets"]) + list(task["secondary_targets"])
+    raise ValueError(f"unknown targets spec {spec!r}; expected primary, secondary, all or a list")
+
+
 def expand(experiments: dict, cfg: dict, ids: list[str] | None) -> list[dict]:
     entries = experiments["experiments"]
     if ids is not None:
@@ -27,7 +41,7 @@ def expand(experiments: dict, cfg: dict, ids: list[str] | None) -> list[dict]:
             continue
         if base not in SCRIPTS:
             raise ValueError(f"{run_id}: unknown base {base!r}; expected one of {sorted(SCRIPTS)} or 'script'")
-        targets = cfg["task"]["primary_targets"] if entry["targets"] == "primary" else entry["targets"]
+        targets = resolve_targets(entry["targets"], cfg)
         overrides = entry.get("overrides", {}).copy()
         seeds = overrides.pop("seeds", cfg["seeds"])
         fraction = float(overrides.pop("subsample", 1.0))

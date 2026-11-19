@@ -1,4 +1,5 @@
 import polars as pl
+import pytest
 
 from bridgegnn import driver
 
@@ -48,3 +49,20 @@ def test_write_subsamples_never_overwrites_existing_lists(cfg, tmp_path, monkeyp
     assert path.read_text() == "1\n2\n3\n"      # archived list untouched
     ids = {int(x) for x in path.read_text().split()}
     assert ids <= set(range(30)) or True
+
+
+def test_expand_targets_all_includes_secondary(cfg):
+    grid = {"default_arch": "sage", "experiments": [
+        {"id": "G-sage", "family": "gnn", "base": "gnn", "targets": "all", "overrides": {"arch": "sage"}},
+        {"id": "B-lr", "family": "baseline", "base": "baseline", "targets": "primary", "overrides": {"model": "lr"}}]}
+    jobs = driver.expand(grid, cfg, None)
+    assert [j["target"] for j in jobs if j["run_id"] == "G-sage"] == cfg["task"]["primary_targets"] + cfg["task"]["secondary_targets"]
+    assert [j["target"] for j in jobs if j["run_id"] == "B-lr"] == cfg["task"]["primary_targets"]
+    with pytest.raises(ValueError):
+        driver.resolve_targets("tertiary", cfg)
+
+
+def test_same_fraction_and_seed_give_identical_subsets():
+    ids = pl.Series("person_id", list(range(1, 401)) * 3)
+    assert driver.subsample_patients(ids, 0.25, 3) == driver.subsample_patients(ids, 0.25, 3)
+    assert driver.subsample_patients(ids, 0.25, 3) != driver.subsample_patients(ids, 0.25, 4)
