@@ -41,9 +41,12 @@ def _with_strata(preds: pl.DataFrame, rows: pl.DataFrame) -> pl.DataFrame:
 
 
 def _pairings(cfg_eval: dict, run_ids: set[str]) -> list[tuple[str, str]]:
-    """(run, reference) pairs: every non-baseline run vs each configured baseline, plus explicit paired_runs."""
+    """(run, reference) pairs: the configured GNN runs (`paired_gnn_runs`; every non-baseline run when the key is
+    absent) vs each configured baseline, plus explicit paired_runs."""
     baselines = [b for b in cfg_eval.get("baselines_for_pairing", []) if b in run_ids]
-    pairs = [(r, b) for r in sorted(run_ids) for b in baselines if r != b and r not in baselines]
+    gnn_runs = cfg_eval.get("paired_gnn_runs")
+    pairs = [(r, b) for r in sorted(run_ids) for b in baselines
+             if r != b and r not in baselines and (gnn_runs is None or r in gnn_runs)]
     for a, b in cfg_eval.get("paired_runs", []) or []:
         if a in run_ids and b in run_ids and (a, b) not in pairs:
             pairs.append((a, b))

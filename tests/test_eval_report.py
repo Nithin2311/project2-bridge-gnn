@@ -106,3 +106,16 @@ def test_paired_runs_pairing_between_two_gnn_runs():
     cfg = {"eval": {**CFG["eval"], "baselines_for_pairing": [], "paired_runs": [["B5-P", "B5-U"]]}, "task": CFG["task"]}
     out = report.summarise(pl.concat([a, b]), make_rows(pl.concat([a, b])), cfg)
     assert out["paired"].height == 1 and out["paired"]["baseline"][0] == "B5-U"
+
+
+def test_pairings_restricted_to_configured_gnn_runs():
+    e = {"baselines_for_pairing": ["B-hgb_all", "B-mlp_pool"], "paired_gnn_runs": ["G-sage"],
+         "paired_runs": [["A1a", "G-sage"]]}
+    pairs = report._pairings(e, {"G-sage", "G-gcn", "A1a", "E3-h32", "B-hgb_all", "B-mlp_pool"})
+    assert pairs == [("G-sage", "B-hgb_all"), ("G-sage", "B-mlp_pool"), ("A1a", "G-sage")]
+
+
+def test_pairings_fallback_when_unrestricted():
+    e = {"baselines_for_pairing": ["B-hgb_all"], "paired_runs": []}
+    pairs = report._pairings(e, {"G-sage", "E3-h32", "B-hgb_all"})
+    assert pairs == [("E3-h32", "B-hgb_all"), ("G-sage", "B-hgb_all")]

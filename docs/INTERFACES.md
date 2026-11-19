@@ -110,8 +110,9 @@ uv run python scripts/08_evaluate.py [--n-bootstrap N]
 ```
 Reads every `outputs/predictions/*.parquet` and `outputs/rows.parquet`; writes `outputs/eval/tables/{runs,runs_agg,
 reliability,strata,paired}.csv`, `runs_agg.tex`, `paired.tex`, and `outputs/eval/figures/{roc_pr,reliability}_{target}.pdf`,
-`curves_<run>_<target>.pdf`. Paired deltas appear for every non-baseline run against each of
-`eval.baselines_for_pairing` whose predictions exist (step 05). Strata: sex, age band, subgraph-size bin, index year;
+`curves_<run>_<target>.pdf`. Paired deltas (identical test rows, patient bootstrap) are computed for the runs in
+`eval.paired_gnn_runs` against each of `eval.baselines_for_pairing` whose predictions exist (step 05), plus every
+explicit `[run, reference]` pair in `eval.paired_runs`; no other pairs are bootstrapped. Strata: sex, age band, subgraph-size bin, index year;
 fewer than `eval.min_stratum_pos` positives prints n/a.
 
 ## Step 09 — pre-2020 rebuild and backtest (Nithin)
