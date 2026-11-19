@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import polars as pl
@@ -21,7 +22,8 @@ BASELINES = {
     "B-bridge_lr": "Bridge logistic regression",
 }
 DETERMINISTIC = {"B-prevalence", "B-lr", "B-hgb", "B-hgb_all", "B-bridge_lr"}
-GNNS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT", "B2": "Bipartite hetero"}
+GNNS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT"}
+HETERO = {"B2": "Bipartite (hetero)"}   # extra-credit variant: listed with the GNNs when its five-seed rows exist
 REWIRES = [f"D1-rewire{i}" for i in range(5)]
 SCALE = {
     "C1-25": r"GraphSAGE, 25\%", "C1-50": r"GraphSAGE, 50\%", "G-sage": r"GraphSAGE, 100\%",
@@ -83,17 +85,21 @@ def main() -> None:
             row = stats.get((run, target))
             if row is None or row["n_seeds"] != 5:
                 raise ValueError(f"missing five-seed aggregate for {run} / {target}")
+    hetero = {r: n for r, n in HETERO.items() if all(stats.get((r, t), {}).get("n_seeds") == 5 for t in TARGETS)}
+    if not hetero:
+        print("note: no five-seed B2 (bipartite hetero) rows; fragments list the three homogeneous GNNs only", file=sys.stderr)
+    graph_models = {**GNNS, **hetero}
 
     def label(run, name):
         return name + (r"$^{\dagger}$" if run in DETERMINISTIC else "")
 
     # main table: AUROC and AUPRC, mean and SD over seeds, baselines then GNNs
     main_rows = [tex_row(label(run, name), [f"{msd(run, t, 'auroc')} & {msd(run, t, 'auprc')}" for t in TARGETS])
-                 for run, name in {**BASELINES, **GNNS}.items()]
+                 for run, name in {**BASELINES, **graph_models}.items()]
     write("baseline-rows", "\n".join(main_rows))
     # appendix table: seed-0 point estimate with the 95% patient-bootstrap interval
     ci_rows = [tex_row(label(run, name), [f"{ci(run, t, 'auroc')} & {ci(run, t, 'auprc')}" for t in TARGETS])
-               for run, name in {**BASELINES, **GNNS}.items()]
+               for run, name in {**BASELINES, **graph_models}.items()]
     write("baseline-ci-rows", "\n".join(ci_rows))
     write("scale-ap-rows", "\n".join(tex_row(lab, [f"{msd(run, t, 'auroc')} & {msd(run, t, 'auprc')}" for t in TARGETS])
                                      for run, lab in SCALE.items()))
@@ -112,8 +118,16 @@ def main() -> None:
         notes.append(f"For {short}, the strongest baseline by mean AUROC was {BASELINES[best_b].lower()} "
                      f"({stat(best_b, t, 'auroc_mean'):.3f}, AUPRC {stat(best_b, t, 'auprc_mean'):.3f}) and the strongest GNN was "
                      f"{GNNS[best_g]} ({stat(best_g, t, 'auroc_mean'):.3f}, AUPRC {stat(best_g, t, 'auprc_mean'):.3f}).")
+    def overlaps(a, b, t):
+        return stat(a, t, "auroc_lo") <= stat(b, t, "auroc_hi") and stat(b, t, "auroc_lo") <= stat(a, t, "auroc_hi")
+    non_overlap = [f"{short} vs {graph_models[g]}" for t, short in TARGETS.items() for g in graph_models if not overlaps("B-bridge_lr", g, t)]
     notes.append("Bridge logistic regression includes utilization and demographics, so its discrimination combines their signal "
-                 "with the three bridge summaries; its interval overlaps the GNNs' on every target (Table~\\ref{tab:baseline-ci}).")
+                 "with the three bridge summaries; its first-seed AUROC interval " +
+                 ("overlaps every graph model's on every target" if not non_overlap else
+                  "overlaps every graph model's except " + ", ".join(non_overlap)) + " (Table~\\ref{tab:baseline-ci}).")
+    for r, n in hetero.items():
+        notes.append(f"The bipartite heterogeneous variant ({n}) reached mean AUROC " +
+                     ", ".join(f"{stat(r, t, 'auroc_mean'):.3f} ({short})" for t, short in TARGETS.items()) + ".")
     if args.paired.exists():
         paired = pl.read_csv(args.paired).filter((pl.col("run_id") == "G-sage") & pl.col("baseline").is_in(PAIR_REFS))
         if paired.height:

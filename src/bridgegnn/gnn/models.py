@@ -57,11 +57,15 @@ class SubgraphGNN(nn.Module):
 
 
 class HeteroSubgraphGNN(nn.Module):
-    """Two node types per row: the patient (initial state from the covariates) and its codes (node features + CODE
-    embedding). Each layer sums three relation-specific SAGE-style messages: code<-code over the Layer U edges
-    (SAGEConv, mean), code<-patient (the patient state broadcast to its codes) and patient<-code (mean of the patient's
-    codes); this is PyG HeteroConv(aggr="sum") over SAGEConvs on the (patient, code) graph, computed on the homogeneous
-    batch. The prediction is read from the patient node, so covariates enter only through it."""
+    """Two node types per row: the patient (initial state from the covariates, or a learned vector without them) and
+    its codes (node features + CODE embedding). Each layer applies relation-specific SAGE-style messages, computed
+    directly on the batched homogeneous graph: first the codes update, code<-code over the Layer U edges (SAGEConv,
+    mean) plus code<-patient (the patient state broadcast to its codes, summed into the same update); then the patient
+    updates from its own state plus patient<-code (the mean of the *updated* code states). The within-layer order means
+    a depth-d patient readout sees d rounds of code-code passing, matching the homogeneous models' receptive field,
+    and no parameter is dead. The prediction is read from the patient node alone, so covariates enter only through it.
+    Patients without eligible codes link to the single virtual code node, as in the homogeneous models; `--agg` changes
+    only the code<-code aggregation (patient<-code is always the mean)."""
 
     def __init__(self, arch: str, in_dim: int, cov_dim: int, hidden: int, depth: int, dropout: float, heads: int,
                  agg: str, n_nodes: int, embedding_dim: int, use_embedding: bool):
@@ -81,11 +85,11 @@ class HeteroSubgraphGNN(nn.Module):
             self.code_code.append(SAGEConv(d, hidden, aggr=agg))
             self.code_from_patient.append(nn.Linear(hidden, hidden, bias=False))
             self.patient_self.append(nn.Linear(hidden, hidden))
-            self.patient_from_code.append(nn.Linear(d, hidden, bias=False))
+            self.patient_from_code.append(nn.Linear(hidden, hidden, bias=False))
         self.head = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Dropout(dropout), nn.Linear(hidden, 1))
 
     def forward(self, x, edge_index, edge_weight, node_ids, batch, cov):
-        n_graphs = int(batch.max().item()) + 1 if batch.numel() else cov.reshape(-1, max(self.cov_dim, 1)).shape[0]
+        n_graphs = cov.shape[0]   # the batched covariate tensor is always [n_graphs, cov_dim], even when cov_dim == 0
         h = x
         if self.embedding is not None:
             h = torch.cat([h, self.embedding(node_ids + 1)], dim=1)
@@ -94,10 +98,8 @@ class HeteroSubgraphGNN(nn.Module):
         else:
             p = self.patient_init.unsqueeze(0).expand(n_graphs, -1)
         for cc, cp, ps, pc in zip(self.code_code, self.code_from_patient, self.patient_self, self.patient_from_code):
-            h_new = cc(h, edge_index) + cp(p)[batch]
-            p_new = ps(p) + pc(global_mean_pool(h, batch, size=n_graphs))
-            h = F.dropout(F.relu(h_new), p=self.dropout, training=self.training)
-            p = F.dropout(F.relu(p_new), p=self.dropout, training=self.training)
+            h = F.dropout(F.relu(cc(h, edge_index) + cp(p)[batch]), p=self.dropout, training=self.training)
+            p = F.dropout(F.relu(ps(p) + pc(global_mean_pool(h, batch, size=n_graphs))), p=self.dropout, training=self.training)
         return self.head(p).squeeze(-1)
 
 

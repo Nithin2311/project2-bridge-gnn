@@ -25,7 +25,7 @@ from torch_geometric.loader import DataLoader
 
 from .. import contract
 from .data import Example, apply_cov_scaler, fit_cov_scaler
-from .models import SubgraphGNN, build_model, to_pyg
+from .models import build_model, to_pyg
 
 
 def set_seed(seed: int) -> None:
@@ -45,7 +45,7 @@ def _auprc(y: np.ndarray, p: np.ndarray) -> float | None:
 
 
 @torch.no_grad()
-def predict(model: SubgraphGNN, examples: list[Example], batch_size: int = 256, prior_correct: bool = True) -> np.ndarray:
+def predict(model: nn.Module, examples: list[Example], batch_size: int = 256, prior_correct: bool = True) -> np.ndarray:
     """Probabilities. With prior_correct, the logit shift induced by pos_weight (log(n_neg/n_pos) on the fitting rows)
     is removed so probabilities sit on the prevalence scale; ranking metrics are unchanged, Brier becomes meaningful."""
     if not examples:
@@ -60,7 +60,7 @@ def predict(model: SubgraphGNN, examples: list[Example], batch_size: int = 256, 
 
 
 @torch.no_grad()
-def _val_loss(model: SubgraphGNN, examples: list[Example], loss_fn, batch_size: int = 256) -> float:
+def _val_loss(model: nn.Module, examples: list[Example], loss_fn, batch_size: int = 256) -> float:
     model.eval()
     total, n = 0.0, 0
     for batch in _loader(examples, batch_size, shuffle=False, seed=0):
@@ -71,7 +71,7 @@ def _val_loss(model: SubgraphGNN, examples: list[Example], loss_fn, batch_size: 
 
 
 def fit(train_ex: list[Example], val_ex: list[Example], params: dict, seed: int, cfg_gnn: dict,
-        model_kwargs: dict) -> tuple[SubgraphGNN, int, dict]:
+        model_kwargs: dict) -> tuple[nn.Module, int, dict]:
     """Early stopping on val AUPRC when val_ex is given; otherwise exactly params['epochs'] epochs."""
     set_seed(seed)
     model = build_model(**model_kwargs)

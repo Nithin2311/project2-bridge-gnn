@@ -373,7 +373,7 @@ files. New dependencies: `torch`, `torch_geometric`, `scikit-learn` (present).
 | 04 | `04_motifs.py`: triad census on Layer D vs 100 rewired nulls; bridge-centred chains | `motifs.csv`, `bridge_chains.csv`, figure | N |
 | 05 | `05_baselines.py`: models 1-5 (incl. 3b, 4b) per target, 5 seeds, GroupKFold selection, refit, test once | `results_baselines.csv`, predictions, logs | D |
 | 06 | `06_gnn.py --layer U|D|N --arch gcn|sage|gat --features <groups> --depth --agg --heads --lookback --expand --weighted`: PyG dataset builder (one `Data` per row, cached), GroupKFold selection, refit, test once, curves and logs | `results_gnn.csv`, predictions, curves, checkpoints (ignored) | N + D |
-| 06b | `06b_hetero.py`: bipartite HeteroGNN (B2) | `results_hetero.csv` | N (week 3) |
+| 06b | `06_gnn.py --arch hetero`: bipartite HeteroGNN (B2) | `results/gnn.csv (B2 rows)` | N (week 3) |
 | 07 | `07_experiments.py`: drives 05/06 over the experiment grid in section 8, incl. C1 subsampling and D1 null graphs | `results_experiments.csv` | D |
 | 08 | `08_evaluate.py`: bootstrap intervals, calibration, F1 threshold, confusion matrices, stratified tables, paired comparisons, all plots, LaTeX tables | `tables/*.tex`, `fig_*.pdf` | N |
 | 09 | `09_pre2020_graph.py`: rebuild P1 graph and node features from development records before 2020-01-01 via the P1 code; then B5 and the temporal backtest | `outputs/pre2020/`, `results_b5.csv`, `results_backtest.csv` | N |

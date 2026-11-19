@@ -1,4 +1,4 @@
-"""Step 6: GCN / GraphSAGE / GAT on per-row patient subgraphs. CLI contract: docs/INTERFACES.md.
+"""Step 6: GCN / GraphSAGE / GAT / bipartite hetero (B2) on per-row patient subgraphs. CLI contract: docs/INTERFACES.md.
 
 Example:
   uv run python scripts/06_gnn.py --run-id G-sage --target mental_health --arch sage
@@ -118,6 +118,8 @@ def main(argv=None):
         sys.exit("--layer N and --null-graph must be used together")
     if args.layer_file and (args.layer != "U" or args.null_graph != "none"):
         sys.exit("--layer-file replaces the layer; do not combine it with --layer or --null-graph")
+    if args.arch == "hetero" and args.expand:
+        sys.exit("--arch hetero does not support --expand 1: context codes would become patient neighbours")
     directed = args.layer == "D"
     if args.layer_file:
         directed = nx.read_graphml(args.layer_file).is_directed()

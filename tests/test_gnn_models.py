@@ -106,3 +106,29 @@ def test_hetero_without_covariates():
     model = models.build_model(**_kw(cov=0)).eval()
     out = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
     assert out.shape == (5,) and torch.isfinite(out).all()
+
+
+def test_hetero_every_parameter_receives_gradient():
+    """Codes update before the patient aggregates them, so the last layer's code update feeds the readout (no dead weights)."""
+    exs = make_examples(n=6)
+    batch = next(iter(DataLoader(models.to_pyg(exs), batch_size=6)))
+    model = models.build_model(**_kw()).train()
+    out = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
+    out.sum().backward()
+    dead = [n for n, p in model.named_parameters() if p.grad is None or float(p.grad.abs().sum()) == 0.0]
+    assert dead == [], dead
+
+
+def test_hetero_batch_isolation_and_sensitivity():
+    exs = make_examples(n=5)
+    model = models.build_model(**_kw()).eval()
+    batch = next(iter(DataLoader(models.to_pyg(exs), batch_size=5)))
+    together = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)
+    alone = torch.cat([model(b.x, b.edge_index, b.edge_weight, b.node_ids, b.batch, b.cov)
+                       for b in DataLoader(models.to_pyg(exs), batch_size=1)])
+    assert torch.allclose(together, alone, atol=1e-6)
+    cov2 = batch.cov.clone(); cov2[0] += 1.0
+    changed = model(batch.x, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, cov2)
+    assert not torch.isclose(changed[0], together[0]) and torch.allclose(changed[1:], together[1:], atol=1e-6)
+    x2 = batch.x.clone(); x2[0] += 1.0
+    assert not torch.isclose(model(x2, batch.edge_index, batch.edge_weight, batch.node_ids, batch.batch, batch.cov)[0], together[0])
