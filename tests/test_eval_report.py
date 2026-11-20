@@ -122,7 +122,7 @@ def test_pairings_fallback_when_unrestricted():
 
 
 def test_paired_includes_a_seed_pooled_row_and_per_seed_rows(preds_two_runs):
-    """seed == -1 pairs the seed-averaged test predictions of both runs (one interval that uses every seed);
+    """seed == -1 is the seed-mean paired bootstrap over every seed of both runs (one interval that uses every seed);
     per-seed rows stay for the count of per-seed intervals excluding zero."""
     tabs = report.summarise(preds_two_runs, make_rows(preds_two_runs), CFG)
     p = tabs["paired"].filter((pl.col("run_id") == "G-sage") & (pl.col("baseline") == "B-hgb_all"))
@@ -130,6 +130,8 @@ def test_paired_includes_a_seed_pooled_row_and_per_seed_rows(preds_two_runs):
     pooled = p.filter(pl.col("seed") == -1).row(0, named=True)
     assert pooled["d_auroc_lo"] <= pooled["d_auroc"] <= pooled["d_auroc_hi"]
     assert pooled["n"] == p.filter(pl.col("seed") == 0)["n"][0]
+    assert abs(pooled["d_auroc"] - p.filter(pl.col("seed") >= 0)["d_auroc"].mean()) < 1e-9   # seed-mean, not an ensemble
+    assert pooled["n_seeds_a"] == 2 and pooled["n_seeds_b"] == 2
 
 
 def test_sex_gap_table_bootstraps_female_minus_male_auroc_on_pooled_predictions(preds_two_runs):

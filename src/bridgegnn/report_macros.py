@@ -94,14 +94,14 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             pl.len().alias("n_seeds"),
             ((pl.col("d_auroc_lo") > 0) | (pl.col("d_auroc_hi") < 0)).sum().alias("n_excl"),
             ((pl.col("d_auprc_lo") > 0) | (pl.col("d_auprc_hi") < 0)).sum().alias("n_excl_auprc"),
-            (pl.col("d_auroc") > 0).sum().alias("n_pos"))
+            (pl.col("d_auroc") > 0).sum().alias("n_posdelta"))
         head = head.join(per_seed, on=["run_id", "baseline", "target"], how="left")
         for r in head.iter_rows(named=True):
             key = [r["run_id"], r["baseline"], r["target"]]
             for c in PAIR_COLUMNS:
                 lines.append(_csname("pair", [*key, c], _fmt(r[c], "{:+.3f}")))
             lines.append(_csname("pair", [*key, "seed"], "pooled" if int(r["seed"]) < 0 else str(int(r["seed"]))))
-            for c in ("n_seeds", "n_excl", "n_excl_auprc", "n_pos"):
+            for c in ("n_seeds", "n_excl", "n_excl_auprc", "n_posdelta"):
                 lines.append(_csname("pair", [*key, c], _fmt(r.get(c), "{:d}")))
     for res_f in (artifacts / "results/gnn.csv", artifacts / "results/baselines.csv"):
         if res_f.exists():

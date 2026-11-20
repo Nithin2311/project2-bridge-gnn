@@ -15,6 +15,11 @@ from bridgegnn import cohort, config, contract, nodefeat
 SHORT = {"cardiometabolic": "CM", "cancer_hematologic": "Heme", "mental_health": "MH", "cancer_metastatic": "Meta"}
 
 
+def cell(n: float) -> str:
+    """Counts below five are shown as '<5' (small-cell suppression for the published fragments)."""
+    return "$<$5" if n < 5 else f"{n:,.0f}"
+
+
 def esc(s: str) -> str:
     return str(s).replace("&", r"\&").replace("%", r"\%").replace("_", r"\_").replace("#", r"\#")
 
@@ -58,15 +63,15 @@ def main() -> None:
     lines += [r"\hline", r"\end{tabular}"]
     (rep / "cohort-table.tex").write_text("\n".join(lines) + "\n")
 
-    lines = [r"\begin{tabular}{llrr}", r"\hline", r"Target & Triggering code (first core code in the horizon) & Positives & Share \\", r"\hline"]
+    lines = [r"\begin{tabular}{llrr}", r"\hline", r"Target & Triggering code (first core code in the horizon; same-day ties share credit) & Positives & Share \\", r"\hline"]
     for t in targets:
         sub = trig.filter(pl.col("target") == t).head(6)
         for i, r in enumerate(sub.iter_rows(named=True)):
             lab = SHORT.get(t, t) if i == 0 else ""
-            lines.append(f"{lab} & {esc(r['category'])} {esc(names.get(r['category'], ''))} & {r['n']} & {100 * r['share']:.0f}\\% \\\\")
+            lines.append(f"{lab} & {esc(r['category'])} {esc(names.get(r['category'], ''))} & {cell(r['n'])} & {100 * r['share']:.0f}\\% \\\\")
         rest = trig.filter(pl.col("target") == t).slice(6)
         if rest.height:
-            lines.append(f" & other ({rest.height} codes) & {int(rest['n'].sum())} & {100 * rest['share'].sum():.0f}\\% \\\\")
+            lines.append(f" & other ({rest.height} codes) & {cell(float(rest['n'].sum()))} & {100 * rest['share'].sum():.0f}\\% \\\\")
         lines.append(r"\hline")
     lines.append(r"\end{tabular}")
     (rep / "trigger-table.tex").write_text("\n".join(lines) + "\n")
@@ -81,7 +86,7 @@ def main() -> None:
 
     lines = [r"\begin{tabular}{llrrr}", r"\hline", r"Target & Bridge code & Eligible rows carrying it & Positive rows carrying it & Eligible rows \\", r"\hline"]
     for r in carriers.iter_rows(named=True):
-        lines.append(f"{SHORT.get(r['target'], r['target'])} & {esc(r['category'])} {esc(names.get(r['category'], ''))} & {r['n_rows']:,} & {r['n_pos_rows']:,} & {r['n_rows_total']:,} \\\\")
+        lines.append(f"{SHORT.get(r['target'], r['target'])} & {esc(r['category'])} {esc(names.get(r['category'], ''))} & {cell(r['n_rows'])} & {cell(r['n_pos_rows'])} & {r['n_rows_total']:,} \\\\")
     lines += [r"\hline", r"\end{tabular}"]
     (rep / "bridge-carriers-table.tex").write_text("\n".join(lines) + "\n")
     print(f"wrote {out / 'cohort'} (5 tables) and 4 fragments in {rep}  ({time.time() - t0:.0f}s)")

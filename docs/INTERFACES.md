@@ -112,7 +112,7 @@ Reads every `outputs/predictions/*.parquet` and `outputs/rows.parquet`; writes `
 reliability,strata,paired}.csv`, `runs_agg.tex`, `paired.tex`, and `outputs/eval/figures/{roc_pr,reliability}_{target}.pdf`,
 `curves_<run>_<target>.pdf`. Paired deltas (identical test rows, patient bootstrap) are computed for the runs in
 `eval.paired_gnn_runs` against each of `eval.baselines_for_pairing` whose predictions exist (step 05), plus every
-explicit `[run, reference]` pair in `eval.paired_runs`; no other pairs are bootstrapped. Each pairing has one row per seed plus a row with `seed = -1` that pairs the seed-averaged test predictions of the two runs (the interval the report quotes); the per-seed rows give the count of intervals excluding zero. Strata: sex, age band, subgraph-size bin, index year;
+explicit `[run, reference]` pair in `eval.paired_runs`; no other pairs are bootstrapped. Each pairing has one row per seed plus a row with `seed = -1` holding the seed-mean paired bootstrap (on each shared patient resample, the mean over seeds of AUROC minus the mean over the reference's seeds; `n_seeds_a`, `n_seeds_b` record how many seeds each side averaged). Its point estimate equals the mean per-seed difference. The report quotes that row; the per-seed rows give the count of intervals excluding zero. Strata: sex, age band, subgraph-size bin, index year;
 fewer than `eval.min_stratum_pos` positives prints n/a.
 
 ## Step 09 — pre-2020 rebuild and backtest (Nithin)

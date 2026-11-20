@@ -45,19 +45,20 @@ agg.with_columns([pl.col(c).round(3) for c in agg.columns if agg[c].dtype == pl.
     "Test performance per run: mean and SD over seeds; the interval is the 95\\% patient-level percentile bootstrap of the seed in ci\\_seed (auroc\\_seed is that seed's point estimate).",
     "tab:runs"))
 if tabs["paired"].height:
-    p0 = tabs["paired"].sort("seed").group_by("run_id", "baseline", "target", maintain_order=True).agg(
-        pl.col("seed").first().alias("seed"), pl.col("d_auroc").first(), pl.col("d_auroc_lo").first(), pl.col("d_auroc_hi").first(),
-        pl.col("d_auprc").first(), pl.col("d_auprc_lo").first(), pl.col("d_auprc_hi").first(),
-        pl.col("d_auroc").mean().alias("d_auroc_mean_seeds"), pl.col("d_auprc").mean().alias("d_auprc_mean_seeds")).sort("target", "run_id")
+    per_seed = tabs["paired"].filter(pl.col("seed") >= 0)
+    pooled = tabs["paired"].filter(pl.col("seed") == report.POOLED_SEED)
+    k = per_seed.group_by("run_id", "baseline", "target").agg(
+        ((pl.col("d_auroc_lo") > 0) | (pl.col("d_auroc_hi") < 0)).sum().alias("seeds_excl_zero"), pl.len().alias("n_seeds"))
+    p0 = pooled.join(k, on=["run_id", "baseline", "target"], how="left").sort("target", "run_id")
     (ev / "tables" / "paired.tex").write_text(report.to_latex(
-        p0, ["target", "run_id", "baseline", "seed", "d_auroc", "d_auroc_lo", "d_auroc_hi", "d_auprc", "d_auprc_lo", "d_auprc_hi", "d_auroc_mean_seeds"],
-        "Paired difference (run minus reference) on identical test patients for the first seed, with its 95\\% patient-level percentile bootstrap interval; the last column is the mean difference over seeds.", "tab:paired"))
+        p0, ["target", "run_id", "baseline", "d_auroc", "d_auroc_lo", "d_auroc_hi", "d_auprc", "d_auprc_lo", "d_auprc_hi", "seeds_excl_zero", "n_seeds"],
+        "Seed-mean paired difference (run minus reference) on identical test patients with its 95\\% patient-level percentile bootstrap interval, and the number of per-seed intervals excluding zero.", "tab:paired"))
 else:
     print("note: no pairings computed (no reference run among eval.baselines_for_pairing / eval.paired_runs has predictions yet)")
 with pl.Config(tbl_rows=60, tbl_width_chars=170, float_precision=3):
     print(agg.select("target", "run_id", "auroc_mean", "auroc_sd", "auroc_seed", "auroc_lo", "auroc_hi", "auprc_mean", "brier_mean", "f1_mean", "any_degenerate_threshold", "n_seeds"))
     if tabs["paired"].height:
-        print(tabs["paired"].group_by("run_id", "baseline", "target").agg(pl.col("d_auroc").mean(), pl.col("d_auprc").mean()).sort("target"))
+        print(tabs["paired"].filter(pl.col("seed") == report.POOLED_SEED).select("run_id", "baseline", "target", "d_auroc", "d_auroc_lo", "d_auroc_hi").sort("target"))
 
 # ---- figures: ROC / PR for the main runs (seed 0), reliability, training curves ----
 main_runs = [r for r in agg["run_id"].unique().to_list() if r.startswith(("G-", "B-", "B2"))]

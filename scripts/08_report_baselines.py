@@ -129,7 +129,7 @@ def main() -> None:
         notes.append(f"The bipartite heterogeneous variant ({r}, listed as {n}) reached mean AUROC " +
                      ", ".join(f"{stat(r, t, 'auroc_mean'):.3f} ({short})" for t, short in TARGETS.items()) + ".")
     if args.paired.exists():
-        paired = pl.read_csv(args.paired).filter((pl.col("run_id") == "G-sage") & pl.col("baseline").is_in(PAIR_REFS))
+        paired = pl.read_csv(args.paired).filter((pl.col("run_id") == "G-sage") & pl.col("baseline").is_in(PAIR_REFS) & (pl.col("seed") >= 0))
         if paired.height:
             s0 = paired.filter(pl.col("seed") == paired["seed"].min())
             excl = []
@@ -147,9 +147,9 @@ def main() -> None:
                     if r["d_auprc_lo"] > 0 or r["d_auprc_hi"] < 0:
                         excl.append(f"{short} AUPRC vs {BASELINES[ref].lower()}")
                 if parts:
-                    notes.append(f"Paired GraphSAGE-minus-baseline differences on identical test patients ({short}, seed {s0['seed'][0]}, "
+                    notes.append(f"Paired GraphSAGE-minus-baseline differences on identical test patients (first seed, {short}, "
                                  f"95\\% patient-bootstrap intervals): " + "; ".join(parts) + ".")
-            notes.append("Intervals excluding zero: " + (", ".join(excl) if excl else "none") + ".")
+            notes.append("First-seed intervals excluding zero: " + (", ".join(excl) if excl else "none") + "; the seed-mean intervals are in the supplement.")
     write("baseline-results-summary", " ".join(notes))
 
     scale_notes = []

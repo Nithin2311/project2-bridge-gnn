@@ -46,7 +46,7 @@ def test_subgraph_sizes_use_masked_graph_codes_in_the_window():
 def test_bridge_carriers_count_rows_with_each_bridge_code_in_the_window():
     rc = pl.DataFrame({"person_id": [1, 1, 2, 3], "index_date": [date(2018, 1, 1)] * 4, "category": ["N17", "A41", "N17", "E87"],
                        "in_lb1095": [True, False, True, True], "in_main_graph": [True] * 4,
-                       "masked_cardiometabolic": [False] * 4})
+                       "masked_cardiometabolic": [False, False, False, False]})
     rows = _rows().unique(subset=["person_id"], keep="first")   # patients 1-5, target cardiometabolic
     t = cohort.bridge_carriers(rows, rc, {"cardiometabolic": ["N17", "A41", "E87"]})
     got = {r["category"]: (r["n_rows"], r["n_pos_rows"]) for r in t.iter_rows(named=True)}

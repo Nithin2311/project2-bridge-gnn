@@ -122,18 +122,43 @@ def paired_delta(y: np.ndarray, p_a: np.ndarray, p_b: np.ndarray, person_id: np.
     return out
 
 
+def paired_delta_seeds(y: np.ndarray, PA: np.ndarray, PB: np.ndarray, person_id: np.ndarray, n: int, seed: int) -> dict:
+    """Seed-mean paired bootstrap: on each shared patient resample, mean over seeds of AUROC(A_s) minus mean over seeds of
+    AUROC(B_s) (likewise AUPRC). PA and PB are (rows x seeds) matrices aligned on the same rows; a deterministic model has
+    one column. The point estimate equals the mean per-seed difference (Table 3's difference of means), unlike the AUROC
+    of seed-averaged probabilities, which scores a seed ensemble and favours stochastic models."""
+    y, PA, PB = np.asarray(y), np.asarray(PA), np.asarray(PB)
+    PA = PA.reshape(len(y), -1)
+    PB = PB.reshape(len(y), -1)
+    out = {"n_seeds_a": int(PA.shape[1]), "n_seeds_b": int(PB.shape[1])}
+
+    def seed_mean(fn, yy, P):
+        vals = [fn(yy, P[:, s]) for s in range(P.shape[1])]
+        return None if any(v is None for v in vals) else float(np.mean(vals))
+
+    for name, fn in [("auroc", auroc), ("auprc", auprc)]:
+        pa, pb = seed_mean(fn, y, PA), seed_mean(fn, y, PB)
+        point = (pa - pb) if pa is not None and pb is not None else float("nan")
+        ds = []
+        for idx in _patient_resamples(person_id, n, seed):
+            a, b = seed_mean(fn, y[idx], PA[idx]), seed_mean(fn, y[idx], PB[idx])
+            if a is not None and b is not None:
+                ds.append(a - b)
+        lo, hi = (np.percentile(ds, [2.5, 97.5]) if ds else (float("nan"), float("nan")))
+        out.update({f"d_{name}": float(point), f"d_{name}_lo": float(lo), f"d_{name}_hi": float(hi)})
+    return out
+
+
 def sex_gap(df: pl.DataFrame, n: int, seed: int) -> dict:
     """Female-minus-male AUROC on seed-pooled test predictions with a patient-level percentile bootstrap of the gap.
     `df` has person_id, y, p, sex (one row per patient-landmark)."""
     y, p = df["y"].to_numpy().astype(int), df["p"].to_numpy()
-    fem = (df["sex"].to_numpy() == "female")
+    sex = df["sex"].to_numpy()
+    if not set(np.unique(sex.astype(str))) <= {"female", "male"}:
+        raise ValueError(f"sex_gap expects female/male only, got {sorted(set(sex.astype(str)))}")
+    fem = sex == "female"
     pid = df["person_id"].to_numpy()
-
-    def both(mask):
-        yy, pp = y[mask], p[mask]
-        return auroc(yy, pp) if 0 < yy.sum() < len(yy) else None
-
-    af, am = both(fem), both(~fem)
+    af, am = both_idx(y, p, fem), both_idx(y, p, ~fem)
     gaps = []
     for idx in _patient_resamples(pid, n, seed):
         m = fem[idx]

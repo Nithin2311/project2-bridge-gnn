@@ -12,11 +12,11 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-CSV_DIRS = ["results", "eval/tables", "layers", "motifs", "pre2020"]
+CSV_DIRS = ["results", "eval/tables", "layers", "motifs", "pre2020", "cohort"]
 NPY_FILES = ["node_x.npy"]
 TORCH_FILES = {"results/gnn.csv", "eval/tables/runs.csv", "eval/tables/runs_agg.csv", "eval/tables/runs_agg_rounded.csv",
                "eval/tables/paired.csv", "eval/tables/reliability.csv", "eval/tables/strata.csv"}
-DETERMINISTIC_MODELS = {"prevalence", "lr", "hgb", "hgb_all", "bridge_lr"}
+DETERMINISTIC_MODELS = {"prevalence", "lr", "hgb", "hgb_all", "bridge_lr", "cov_lr"}
 STATUSES = ["exact", "within_tol", "exceeds", "missing_file", "missing_column"]
 COLUMNS = ["file", "column", "status", "max_abs_diff", "n_rows_old", "n_rows_new", "note"]
 

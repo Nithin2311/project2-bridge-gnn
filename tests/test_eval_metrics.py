@@ -64,3 +64,19 @@ def test_paired_delta_identical_is_zero():
     y = (rng.uniform(size=200) < 0.2).astype(int); p = rng.uniform(size=200); pid = np.arange(200)
     d = metrics.paired_delta(y, p, p.copy(), pid, n=30, seed=0)
     assert d["d_auroc"] == 0 and d["d_auroc_lo"] == 0 and d["d_auroc_hi"] == 0 and d["d_auprc"] == 0
+
+
+def test_paired_delta_seeds_point_estimate_is_the_mean_per_seed_difference():
+    rng = np.random.default_rng(0)
+    n = 300
+    y = (rng.uniform(size=n) < 0.2).astype(int)
+    pid = np.repeat(np.arange(n // 2), 2)
+    PA = np.stack([np.clip(0.2 + 0.3 * y + rng.normal(0, 0.25, n), 0, 1) for _ in range(5)], axis=1)   # five seeds
+    PB = np.clip(0.2 + 0.2 * y + rng.normal(0, 0.25, n), 0, 1)[:, None]                                 # deterministic: one column
+    d = metrics.paired_delta_seeds(y, PA, PB, pid, 50, 0)
+    per_seed = np.mean([metrics.auroc(y, PA[:, s]) for s in range(5)]) - metrics.auroc(y, PB[:, 0])
+    assert abs(d["d_auroc"] - per_seed) < 1e-12
+    assert d["d_auroc_lo"] <= d["d_auroc"] <= d["d_auroc_hi"]
+    ens = metrics.auroc(y, PA.mean(axis=1)) - metrics.auroc(y, PB[:, 0])
+    assert abs(ens - per_seed) > 1e-6   # the ensemble statistic is a different quantity; the seed-mean one is reported
+    assert d["n_seeds_a"] == 5 and d["n_seeds_b"] == 1

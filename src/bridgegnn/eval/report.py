@@ -11,7 +11,7 @@ from .. import contract
 from . import metrics
 
 STRATA = ["sex", "age_band", "size_bin", "index_year"]
-POOLED_SEED = -1   # paired rows with seed == -1 compare the seed-averaged test predictions of the two runs
+POOLED_SEED = -1   # paired rows with seed == -1 hold the seed-mean paired bootstrap over every seed of both runs (metrics.paired_delta_seeds)
 
 
 def load_predictions(d: Path) -> pl.DataFrame:
@@ -107,11 +107,11 @@ def summarise(preds: pl.DataFrame, rows: pl.DataFrame, cfg: dict) -> dict[str, p
     test_preds = P.filter(pl.col("split") == "test")
 
     def _test(run_id, target, s):
-        """Test predictions of one seed, or (s == -1) the seed-averaged prediction per row: one interval that uses every seed."""
+        """Test predictions of one seed, or (s == POOLED_SEED) one row per test row with the per-seed probabilities as a list."""
         sub = test_preds.filter((pl.col("run_id") == run_id) & (pl.col("target") == target))
         if s != POOLED_SEED:
-            return sub.filter(pl.col("seed") == s)
-        return sub.group_by("person_id", "index_date").agg(pl.col("p").mean(), pl.col("y").first())
+            return sub.filter(pl.col("seed") == s).with_columns(pl.concat_list([pl.col("p")]).alias("ps"))
+        return sub.sort("seed").group_by("person_id", "index_date").agg(pl.col("p").alias("ps"), pl.col("y").first())
 
     for run_id, ref in _pairings(E, set(P["run_id"].to_list())):
         seeds_here = sorted({(t, s) for r, t, s in keys if r == run_id})
@@ -120,12 +120,15 @@ def summarise(preds: pl.DataFrame, rows: pl.DataFrame, cfg: dict) -> dict[str, p
             a, b = _test(run_id, target, s), _test(ref, target, s)
             if a.height == 0 or b.height == 0:
                 continue
-            m = a.join(b.select("person_id", "index_date", pl.col("p").alias("p_b"), pl.col("y").alias("y_b")), on=["person_id", "index_date"], how="inner")
+            m = a.join(b.select("person_id", "index_date", pl.col("ps").alias("ps_b"), pl.col("y").alias("y_b")), on=["person_id", "index_date"], how="inner")
             if m.height == 0:
                 continue
             if (m["y"] != m["y_b"]).any():
                 raise ValueError(f"labels differ between {run_id} and {ref} on shared rows ({target}, seed {s})")
-            d = metrics.paired_delta(m["y"].to_numpy().astype(int), m["p"].to_numpy(), m["p_b"].to_numpy(), m["person_id"].to_numpy(), nb, seed)
+            PA = np.array(m["ps"].to_list(), dtype=float)
+            PB = np.array(m["ps_b"].to_list(), dtype=float)
+            # the seed-mean paired bootstrap; for a single seed on both sides it reduces to the plain paired bootstrap
+            d = metrics.paired_delta_seeds(m["y"].to_numpy().astype(int), PA, PB, m["person_id"].to_numpy(), nb, seed)
             paired.append({"run_id": run_id, "baseline": ref, "target": target, "seed": int(s), "n": m.height, **d})
     gap_runs = set(E.get("paired_gnn_runs") or []) | set(E.get("baselines_for_pairing") or [])
     if not E.get("paired_gnn_runs"):
@@ -136,7 +139,7 @@ def summarise(preds: pl.DataFrame, rows: pl.DataFrame, cfg: dict) -> dict[str, p
             pooled = test_preds.filter((pl.col("run_id") == run_id) & (pl.col("target") == target)).group_by(
                 "person_id", "index_date").agg(pl.col("p").mean(), pl.col("y").first(), pl.col("sex").first())
             sex_gap.append({"run_id": run_id, "target": target, **metrics.sex_gap(pooled, nb, seed)})
-    schema = {"run_id": pl.Utf8, "baseline": pl.Utf8, "target": pl.Utf8, "seed": pl.Int64, "n": pl.Int64,
+    schema = {"run_id": pl.Utf8, "baseline": pl.Utf8, "target": pl.Utf8, "seed": pl.Int64, "n": pl.Int64, "n_seeds_a": pl.Int64, "n_seeds_b": pl.Int64,
               "d_auroc": pl.Float64, "d_auroc_lo": pl.Float64, "d_auroc_hi": pl.Float64, "d_auprc": pl.Float64, "d_auprc_lo": pl.Float64, "d_auprc_hi": pl.Float64}
     paired_df = pl.DataFrame(paired, schema=schema) if paired else pl.DataFrame(schema=schema)
     return {"runs": runs_df, "runs_agg": agg,

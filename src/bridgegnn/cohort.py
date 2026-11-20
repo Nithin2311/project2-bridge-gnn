@@ -8,11 +8,13 @@ import polars as pl
 
 def cohort_table(rows: pl.DataFrame, dev_splits: tuple[str, ...] = ("train", "val")) -> pl.DataFrame:
     """One row per target: development and test rows, patients and positives, and the test set's female and 65+ shares."""
+    unknown = set(rows["split"].unique().to_list()) - set(dev_splits) - {"test"}
+    if unknown:
+        raise ValueError(f"unexpected split values {sorted(unknown)}")
     r = rows.with_columns(pl.when(pl.col("split").is_in(list(dev_splits))).then(pl.lit("dev")).otherwise(pl.lit("test")).alias("part"))
     parts = r.group_by("target", "part").agg(pl.len().alias("n_rows"), pl.col("person_id").n_unique().alias("n_patients"),
                                             pl.col("positive").sum().alias("n_pos"))
     wide = parts.pivot(on="part", index="target", values=["n_rows", "n_patients", "n_pos"])
-    wide = wide.rename({c: c.replace("n_rows_", "n_rows_").replace("n_patients_", "n_patients_").replace("n_pos_", "n_pos_") for c in wide.columns})
     test = r.filter(pl.col("part") == "test").group_by("target").agg(
         (pl.col("sex") == "female").mean().alias("test_female_share"), (pl.col("age_at_index") >= 65).mean().alias("test_age65_share"),
         pl.col("age_at_index").median().alias("test_age_median"))
@@ -33,12 +35,15 @@ def triggering_codes(pos_rows: pl.DataFrame, first_dates: pl.DataFrame, core: di
         j = sub.join(first_dates.filter(pl.col("category").is_in(members)), on="person_id", how="inner")
         j = j.with_columns((pl.col("first_date") - pl.col("index_date")).dt.total_days().alias("days"))
         j = j.filter((pl.col("days") > 0) & (pl.col("days") <= horizon_days))
-        first = j.sort("days").group_by("person_id", "index_date", maintain_order=True).first()
-        counts = first.group_by("category").len().rename({"len": "n"}).sort("n", "category", descending=[True, False])
-        total = int(counts["n"].sum())
+        # same-day ties share the credit 1/k, so the attribution does not depend on row order
+        ranked = j.with_columns(pl.col("days").min().over("person_id", "index_date").alias("first_day")).filter(pl.col("days") == pl.col("first_day"))
+        ranked = ranked.with_columns((1.0 / pl.len().over("person_id", "index_date")).alias("credit"))
+        n_tied = int((ranked.group_by("person_id", "index_date").len().filter(pl.col("len") > 1)).height)
+        counts = ranked.group_by("category").agg(pl.col("credit").sum().alias("n")).sort("n", "category", descending=[True, False])
+        total = float(counts["n"].sum())
         out.append(counts.with_columns(pl.lit(target).alias("target"), (pl.col("n") / total).alias("share"),
-                                       pl.lit(sub.height).alias("n_positive_rows"), pl.lit(total).alias("n_resolved")))
-    return pl.concat(out).select("target", "category", "n", "share", "n_positive_rows", "n_resolved") if out else pl.DataFrame()
+                                       pl.lit(sub.height).alias("n_positive_rows"), pl.lit(round(total)).alias("n_resolved"), pl.lit(n_tied).alias("n_tied")))
+    return pl.concat(out).select("target", "category", "n", "share", "n_positive_rows", "n_resolved", "n_tied") if out else pl.DataFrame()
 
 
 def subgraph_sizes(rows: pl.DataFrame, row_codes: pl.DataFrame, targets: list[str], window_col: str = "in_lb1095") -> pl.DataFrame:
@@ -67,7 +72,7 @@ def bridge_carriers(rows: pl.DataFrame, row_codes: pl.DataFrame, bridges_by_targ
     out = []
     for t, codes in bridges_by_target.items():
         r = rows.filter(pl.col("target") == t).select("person_id", "index_date", "positive")
-        carried = row_codes.filter(pl.col(window_col) & pl.col("category").is_in(codes)).select("person_id", "index_date", "category").unique()
+        carried = row_codes.filter(pl.col(window_col) & pl.col("category").is_in(codes) & ~pl.col(f"masked_{t}")).select("person_id", "index_date", "category").unique()
         j = r.join(carried, on=["person_id", "index_date"], how="inner")
         counts = j.group_by("category").agg(pl.len().alias("n_rows"), pl.col("positive").sum().alias("n_pos_rows"))
         for c in codes:
