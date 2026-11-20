@@ -56,6 +56,15 @@ def main_figure(preds: pl.DataFrame, target: str, runs: list[str], out: Path, bi
     name = TARGET_NAMES.get(target, target)
     axes[0].set_xlabel("false positive rate"); axes[0].set_ylabel("true positive rate"); axes[0].set_title("ROC (AUROC in legend)")
     axes[1].set_xlabel("recall"); axes[1].set_ylabel("precision"); axes[1].set_title("precision-recall (AUPRC in legend)")
+    # the precision spike at near-zero recall (a handful of rows) would otherwise set the scale; show the curves instead
+    top = 0.05
+    for line in axes[1].get_lines():
+        xs, ys = line.get_xdata(), line.get_ydata()
+        if len(xs) > 1:
+            body = [yv for xv, yv in zip(xs, ys) if xv >= 0.05]
+            if body:
+                top = max(top, max(body))
+    axes[1].set_ylim(0, min(1.0, top * 1.15))
     lim = 0.05
     for line in axes[2].get_lines():
         xs, ys = line.get_xdata(), line.get_ydata()
@@ -65,9 +74,9 @@ def main_figure(preds: pl.DataFrame, target: str, runs: list[str], out: Path, bi
     axes[2].plot([0, lim], [0, lim], color="#4d4d4d", ls=(0, (1, 1)), lw=1.0, label="perfect calibration")
     axes[2].set_xlim(0, lim); axes[2].set_ylim(0, lim); axes[2].set_aspect("equal")
     axes[2].set_xlabel(f"mean predicted probability ({bins} quantile bins)"); axes[2].set_ylabel("observed rate"); axes[2].set_title("reliability")
-    for ax in axes:
+    for ax, loc in zip(axes, ("lower right", "upper right", "upper left")):
         ax.grid(True, lw=0.4, alpha=0.4)
-        ax.legend(frameon=False, loc="best")
+        ax.legend(frameon=False, loc=loc)
     fig.suptitle(f"{name}, test rows, first seed", y=1.02, fontsize=10)
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
