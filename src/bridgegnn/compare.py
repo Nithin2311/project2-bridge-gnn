@@ -115,7 +115,8 @@ def _canon_json(s: str) -> str:
     except (ValueError, TypeError):
         return s
     if isinstance(d, dict):
-        d = {k: v for k, v in d.items() if k not in IGNORED_PARAM_KEYS}
+        # null-valued keys are flags the CLI gained later and did not set: the same configuration as an absent key
+        d = {k: v for k, v in d.items() if k not in IGNORED_PARAM_KEYS and v is not None}
     return json.dumps(d, sort_keys=True)
 
 

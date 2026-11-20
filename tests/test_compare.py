@@ -127,3 +127,12 @@ def test_compare_params_json_ignores_path_and_identity_keys(tmp_path):
 
 def test_compare_npy_only_main_matrix(tmp_path):
     assert compare.NPY_FILES == ["node_x.npy"]
+
+
+def test_compare_params_json_ignores_null_valued_keys(tmp_path):
+    """Flags added to the CLI later are recorded as null; a null flag is the same configuration as an absent one."""
+    a = '{"lr": 0.001, "weighted": 1}'
+    b = '{"lr": 0.001, "weighted": 1, "index_from": null, "test_index_from": null}'
+    old, new = two_trees(tmp_path, new_gnn=gnn_rows(params=b))
+    write(old, "results/gnn.csv", gnn_rows(params=a))
+    assert status_of(compare.compare_dirs(old, new), "results/gnn.csv", "params_json") == "exact"
