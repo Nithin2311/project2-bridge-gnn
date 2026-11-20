@@ -174,3 +174,12 @@ the comparison against the first-pass tree, excluding the runs that only exist i
 
 The remaining rows are the added runs (new rows in the results and evaluation tables) and the paired table, which
 now carries one seed-pooled row (`seed = -1`) per pairing and pairs against five references instead of two.
+
+### Third pass (2026-11-20): seed-mean paired bootstrap
+
+The code review of the fix branch found that the first pooled row averaged probabilities over seeds, which scores a
+five-seed ensemble and favours stochastic models over deterministic baselines by about 0.01 AUROC. The pooled row now
+holds the seed-mean paired bootstrap (`metrics.paired_delta_seeds`): on each shared patient resample, the mean over
+seeds of AUROC(A) minus the mean over the reference's seeds of AUROC(B); its point estimate equals the mean per-seed
+difference. `run_all.sh --from 08` was re-run in the clone at `7cb36a5` (step 08: 23 min). Nothing upstream changed.
+Per-seed rows are identical to the second pass; only the `seed = -1` rows changed.
