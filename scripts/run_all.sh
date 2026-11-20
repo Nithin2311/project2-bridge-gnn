@@ -3,7 +3,7 @@
 # the step 07 driver, evaluation, report fragments and macros, then the aggregate artifact copy.
 #
 #   ./scripts/run_all.sh             full run (~9 h on an M4: grid ~6 h, baselines ~1.5 h, evaluation < 15 min)
-#   ./scripts/run_all.sh --from 06   resume at a label (labels: 00 01 02 03 04 10 05 06 07 09 08 08b collect macros)
+#   ./scripts/run_all.sh --from 06   resume at a label (labels: 00 01 02 03 04 10 05 06 07 09 08 08f 08b collect macros)
 #   ./scripts/run_all.sh --check     tests, grid dry run and input check only (~2 min)
 #
 # Every step appends START/END lines with timestamps, elapsed seconds and exit code to outputs/logs/run_all.log.
@@ -21,7 +21,7 @@ while [ $# -gt 0 ]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-LABELS=(00 01 02 03 04 10 05 06 07 09 08 08b collect macros)
+LABELS=(00 01 02 03 04 10 05 06 07 09 08 08f 08b collect macros)
 echo "RUN $(date -u +%Y-%m-%dT%H:%M:%SZ) commit=$(git rev-parse HEAD 2>/dev/null || echo unknown) args=$*" | tee -a "$LOG"
 STARTED=0
 [ -z "$FROM" ] && STARTED=1
@@ -67,6 +67,7 @@ run_step 06 uv run python scripts/07_experiments.py --ids G-gcn G-sage G-gat
 run_step 07 uv run python scripts/07_experiments.py --ids $GRID_IDS
 run_step 09 uv run python scripts/09_pre2020_graph.py
 run_step 08 uv run python scripts/08_evaluate.py
+run_step 08f uv run python scripts/08_figures.py
 run_step 08b uv run python scripts/08_report_baselines.py
 run_step collect uv run python scripts/collect_artifacts.py
 run_step macros uv run python scripts/report_macros.py   # reads outputs/artifacts, so after collect

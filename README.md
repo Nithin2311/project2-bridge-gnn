@@ -88,7 +88,7 @@ cp -r outputs/artifacts ../reference-artifacts   # keep the committed tree for t
 uv run python scripts/compare_runs.py ../reference-artifacts outputs/artifacts --exclude-runs C1- --md REPRODUCTION.md
 ```
 
-`run_all.sh` runs the labels `00 01 02 03 04 10 05 06 07 09 08 08b collect macros` in order (05 = all tabular baselines through
+`run_all.sh` runs the labels `00 01 02 03 04 10 05 06 07 09 08 08f 08b collect macros` in order (05 = all tabular baselines through
 the step 07 driver, 06 = the main GNN comparison, 07 = the remaining grid, 08b = the report fragments), appends
 timestamped START/END lines per label to `outputs/logs/run_all.log`, stops at the first failure and resumes with
 `--from <label>`. Measured runtimes on an M4 (CPU, fresh clone of 2026-11-19): 00 105 s, 01 117 s, 02 2 s, 03 10 s,

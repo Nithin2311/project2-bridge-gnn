@@ -130,7 +130,7 @@ development records before `rebuild.cutoff`, then calls step 06 for `B5-U`, `B5-
 uv run python scripts/collect_artifacts.py [--out outputs] [--dest outputs/artifacts]
 uv run python scripts/compare_runs.py OLD_ARTIFACTS NEW_ARTIFACTS [--tol 0.02] [--md FILE]
 ```
-`run_all.sh` labels: `00 01 02 03 04 10 05 06 07 09 08 08b collect macros`; log `outputs/logs/run_all.log`; exit code of the
+`run_all.sh` labels: `00 01 02 03 04 10 05 06 07 09 08 08f 08b collect macros`; log `outputs/logs/run_all.log`; exit code of the
 first failing step. `collect_artifacts.py` copies `bridgegnn.artifacts.PATTERNS`, refusing `.parquet` and `.txt`, and
 fails if two sources map to one destination. `compare_runs.py` prints and optionally writes a Markdown table with one
 row per (file, column): `exact`, `within_tol` (torch tables only, non-deterministic rows, `<= --tol`), `exceeds`,
@@ -146,3 +146,11 @@ Reads `outputs/rows.parquet`, `outputs/row_codes.parquet` and the frozen Project
 LaTeX fragments `report/{cohort,trigger,core,bridge-carriers}-table.tex`. Step 08 also writes `eval/tables/sex_gap.csv`:
 female-minus-male AUROC on seed-pooled test predictions with a patient bootstrap, for the paired GNN runs and the
 pairing baselines.
+
+## Step 8f — report figure (Nithin)
+
+```
+uv run python scripts/08_figures.py [--runs ...] [--targets ...]
+```
+Writes `outputs/eval/figures/fig_main_{target}.pdf`: ROC, precision-recall and reliability for the curated set
+`figures.REPORT_RUNS` (GAT, GraphSAGE, covariates-only LR, all-code boosting, prevalence) on the first seed. Reads predictions only; no bootstraps.
