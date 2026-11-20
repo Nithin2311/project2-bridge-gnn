@@ -10,6 +10,7 @@ import argparse
 import math
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 
 RES_COLUMNS = ["auroc_mean", "auroc_sd", "auprc_mean", "auprc_sd", "brier_mean", "auroc_seed", "auroc_lo", "auroc_hi",
@@ -96,6 +97,12 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             ((pl.col("d_auprc_lo") > 0) | (pl.col("d_auprc_hi") < 0)).sum().alias("n_excl_auprc"),
             (pl.col("d_auroc") > 0).sum().alias("n_posdelta"))
         head = head.join(per_seed, on=["run_id", "baseline", "target"], how="left")
+        # multiplicity: normal-approximation p from each quoted interval, Benjamini-Hochberg over the primary-target pairings
+        from .eval import metrics as _m
+        primary = head.filter(pl.col("target") != "cancer_metastatic")
+        pvals = np.array([_m.interval_pvalue(r["d_auroc"], r["d_auroc_lo"], r["d_auroc_hi"]) for r in primary.iter_rows(named=True)])
+        qvals = _m.bh_qvalues(pvals)
+        qmap = {(r["run_id"], r["baseline"], r["target"]): (pv, qv) for r, pv, qv in zip(primary.iter_rows(named=True), pvals, qvals)}
         for r in head.iter_rows(named=True):
             key = [r["run_id"], r["baseline"], r["target"]]
             for c in PAIR_COLUMNS:
@@ -103,6 +110,11 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             lines.append(_csname("pair", [*key, "seed"], "pooled" if int(r["seed"]) < 0 else str(int(r["seed"]))))
             for c in ("n_seeds", "n_excl", "n_excl_auprc", "n_posdelta"):
                 lines.append(_csname("pair", [*key, c], _fmt(r.get(c), "{:d}")))
+            pv, qv = qmap.get(tuple(key), (float("nan"), float("nan")))
+            lines.append(_csname("pair", [*key, "p_norm"], _fmt(pv, "{:.3f}")))
+            lines.append(_csname("pair", [*key, "q_bh"], _fmt(qv, "{:.3f}")))
+        scalars_pairings = {"nPairings": str(primary.height), "nPairingsExclZero": str(int(((primary["d_auroc_lo"] > 0) | (primary["d_auroc_hi"] < 0)).sum())),
+                            "nPairingsBH": str(int(np.nansum(qvals < 0.05)))}
     runs_f = artifacts / "eval/tables/runs.csv"
     if runs_f.exists():
         rr = pl.read_csv(runs_f, infer_schema_length=None)
@@ -135,6 +147,10 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             for c, spec in (("auroc", "{:.3f}"), ("auprc", "{:.3f}"), ("n", "{:d}"), ("pos", "{:d}")):
                 lines.append(_csname("strat", [*key, c], _fmt(r[c], spec)))
     scalars: dict[str, str] = {}
+    try:
+        scalars.update(scalars_pairings)
+    except NameError:
+        pass
     layers_f = artifacts / "layers/layer_stats.csv"
     if layers_f.exists():
         ls = pl.read_csv(layers_f, infer_schema_length=None)

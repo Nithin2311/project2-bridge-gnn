@@ -80,3 +80,13 @@ def test_paired_delta_seeds_point_estimate_is_the_mean_per_seed_difference():
     ens = metrics.auroc(y, PA.mean(axis=1)) - metrics.auroc(y, PB[:, 0])
     assert abs(ens - per_seed) > 1e-6   # the ensemble statistic is a different quantity; the seed-mean one is reported
     assert d["n_seeds_a"] == 5 and d["n_seeds_b"] == 1
+
+
+def test_interval_pvalue_and_bh():
+    # a symmetric 95% interval centred at d with half-width 1.96 se -> two-sided normal p
+    p = metrics.interval_pvalue(0.05, 0.05 - 1.96 * 0.02, 0.05 + 1.96 * 0.02)
+    assert abs(p - 2 * (1 - 0.99379)) < 1e-3          # z = 2.5
+    assert metrics.interval_pvalue(0.0, -0.1, 0.1) == 1.0
+    q = metrics.bh_qvalues(np.array([0.001, 0.01, 0.02, 0.5]))
+    assert np.allclose(q, [0.004, 0.02, 0.02666667, 0.5], atol=1e-6)   # step-up with monotone enforcement
+    assert np.isnan(metrics.bh_qvalues(np.array([np.nan, 0.5]))[0]) and metrics.bh_qvalues(np.array([np.nan, 0.5]))[1] == 0.5

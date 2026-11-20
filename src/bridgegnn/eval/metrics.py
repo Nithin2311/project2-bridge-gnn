@@ -174,3 +174,32 @@ def sex_gap(df: pl.DataFrame, n: int, seed: int) -> dict:
 def both_idx(y, p, mask):
     yy, pp = y[mask], p[mask]
     return auroc(yy, pp) if len(yy) and 0 < yy.sum() < len(yy) else None
+
+
+def interval_pvalue(d: float, lo: float, hi: float) -> float:
+    """Two-sided p-value from a 95% percentile interval under a normal approximation (se = width / 3.92).
+    Reported as an approximation beside the interval, never instead of it."""
+    from scipy.stats import norm
+
+    if any(v is None or np.isnan(v) for v in (d, lo, hi)) or hi <= lo:
+        return float("nan")
+    se = (hi - lo) / 3.92
+    return float(2 * (1 - norm.cdf(abs(d) / se))) if se > 0 else float("nan")
+
+
+def bh_qvalues(p: np.ndarray) -> np.ndarray:
+    """Benjamini-Hochberg step-up q-values; NaN p-values stay NaN and do not count toward the family size."""
+    p = np.asarray(p, dtype=float)
+    q = np.full(p.shape, np.nan)
+    ok = ~np.isnan(p)
+    pv = p[ok]
+    m = pv.size
+    if m == 0:
+        return q
+    order = np.argsort(pv)
+    ranked = pv[order] * m / np.arange(1, m + 1)
+    ranked = np.minimum.accumulate(ranked[::-1])[::-1]
+    out = np.empty(m)
+    out[order] = np.minimum(ranked, 1.0)
+    q[ok] = out
+    return q

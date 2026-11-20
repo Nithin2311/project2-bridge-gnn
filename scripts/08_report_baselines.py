@@ -11,6 +11,7 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 
 from bridgegnn import config, contract
@@ -192,6 +193,11 @@ def main() -> None:
         per = pr.filter(pl.col("seed") >= 0).group_by("run_id", "baseline", "target").agg(
             pl.len().alias("n_seeds"), ((pl.col("d_auroc_lo") > 0) | (pl.col("d_auroc_hi") < 0)).sum().alias("n_excl"))
         pooled = pooled.join(per, on=["run_id", "baseline", "target"], how="left")
+        from bridgegnn.eval import metrics as _m
+        prim = pooled.filter(pl.col("target") != "cancer_metastatic")
+        pv = np.array([_m.interval_pvalue(r["d_auroc"], r["d_auroc_lo"], r["d_auroc_hi"]) for r in prim.iter_rows(named=True)])
+        qv = _m.bh_qvalues(pv)
+        qmap = {(r["run_id"], r["baseline"], r["target"]): q for r, q in zip(prim.iter_rows(named=True), qv)}
         names = {**BASELINES, **GNNS, **HETERO, "D1-shuffle": "Edge shuffle", "D1-rewire0": "Rewiring 0", "D1-empty": "No edges",
                  "A1a": "No BRIDGE features", "A1b": "No BRIDGE, codes masked", "B1": "Directed layer", "B5-U": "Layer U (rows from 2020)",
                  "B5-P": "Pre-2020 graph", "BT-U": "Backtest, Layer U", "BT-P": "Backtest, pre-2020 graph"}
@@ -205,11 +211,12 @@ def main() -> None:
             for t in TARGETS:
                 r = pooled.filter((pl.col("run_id") == run) & (pl.col("baseline") == ref) & (pl.col("target") == t))
                 if r.height == 0:
-                    cells.append("-- & --")
+                    cells.append("-- & -- & --")
                     continue
                 r = r.row(0, named=True)
-                cells.append(f"{r['d_auroc']:+.3f} [{r['d_auroc_lo']:+.3f}, {r['d_auroc_hi']:+.3f}] & {int(r['n_excl'] or 0)}/{int(r['n_seeds'] or 0)}")
-            if any(c != "-- & --" for c in cells):
+                q = qmap.get((run, ref, t), float("nan"))
+                cells.append(f"{r['d_auroc']:+.3f} [{r['d_auroc_lo']:+.3f}, {r['d_auroc_hi']:+.3f}] & {int(r['n_excl'] or 0)}/{int(r['n_seeds'] or 0)} & " + ("n/a" if np.isnan(q) else f"{q:.2f}"))
+            if any(c != "-- & -- & --" for c in cells):
                 prow.append(tex_row(f"{names.get(run, run)} $-$ {names.get(ref, ref)}", cells))
         write("paired-seeds-rows", "\n".join(prow))
 

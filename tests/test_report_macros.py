@@ -128,3 +128,19 @@ def test_macros_confusion_counts_from_first_seed(tmp_path):
     out = report_macros.build(a, None)
     assert r"\csname res:G-sage:cancer_hematologic:tp\endcsname{42}" in out and r"\csname res:G-sage:cancer_hematologic:tn\endcsname{1011}" in out
     assert r"\csname res:G-sage:cancer_hematologic:recall0\endcsname{0.460}" in out
+
+
+def test_macros_emit_bh_q_values_over_the_pooled_pairings(tmp_path):
+    a = tree(tmp_path)
+    rows = []
+    for i, (run, d, lo, hi) in enumerate([("G-sage", -0.118, -0.192, -0.047), ("A1a", -0.036, -0.070, -0.004), ("B1", 0.024, -0.016, 0.063)]):
+        rows.append({"run_id": run, "baseline": "B-cov_lr", "target": "mental_health", "seed": -1, "n": 1375,
+                     "d_auroc": d, "d_auroc_lo": lo, "d_auroc_hi": hi, "d_auprc": 0.0, "d_auprc_lo": -0.03, "d_auprc_hi": 0.03})
+        rows.append({**rows[-1], "seed": 0})
+    write(a, "eval/tables/paired.csv", pl.DataFrame(rows))
+    out = report_macros.build(a, None)
+    assert r"\csname pair:G-sage:B-cov_lr:mental_health:q_bh\endcsname{" in out
+    import re
+    q = {m.group(1): float(m.group(2)) for m in re.finditer(r"pair:(\S+?):B-cov_lr:mental_health:q_bh\\endcsname\{([0-9.]+)\}", out)}
+    assert q["G-sage"] < 0.01 and 0.03 < q["A1a"] < 0.06 and q["B1"] > q["A1a"]   # family of three here; ~100 in the real table
+    assert r"\newcommand{\nPairings}{3}" in out
