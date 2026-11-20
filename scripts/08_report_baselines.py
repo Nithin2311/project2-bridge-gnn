@@ -126,7 +126,7 @@ def main() -> None:
                  ("overlaps every graph model's on every target" if not non_overlap else
                   "overlaps every graph model's except " + ", ".join(non_overlap)) + " (Table~\\ref{tab:baseline-ci}).")
     for r, n in hetero.items():
-        notes.append(f"The bipartite heterogeneous variant ({n}) reached mean AUROC " +
+        notes.append(f"The bipartite heterogeneous variant ({r}, listed as {n}) reached mean AUROC " +
                      ", ".join(f"{stat(r, t, 'auroc_mean'):.3f} ({short})" for t, short in TARGETS.items()) + ".")
     if args.paired.exists():
         paired = pl.read_csv(args.paired).filter((pl.col("run_id") == "G-sage") & pl.col("baseline").is_in(PAIR_REFS))
