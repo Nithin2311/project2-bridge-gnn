@@ -42,7 +42,7 @@ def test_macros_emit_res_and_pair_entries(tmp_path):
     out = report_macros.build(tree(tmp_path), None)
     assert r"\expandafter\def\csname res:G-sage:cardiometabolic:auroc_mean\endcsname{0.612}" in out
     assert r"\csname res:G-sage:cardiometabolic:n\endcsname{1752}" in out
-    assert r"\csname pair:G-sage:B-hgb_all:cardiometabolic:d_auroc\endcsname{+0.080}" in out
+    assert r"\csname pair:G-sage:B-hgb_all:cardiometabolic:d_auroc\endcsname{\mbox{+0.080}}" in out
     assert r"\newcommand{\res}[3]" in out and r"\newcommand{\pair}[4]" in out
 
 
@@ -92,7 +92,7 @@ def test_macros_pair_uses_the_pooled_row_and_counts_seeds_excluding_zero(tmp_pat
                                  (2, -0.12, -0.19, -0.05), (3, -0.10, -0.17, -0.03), (4, -0.09, -0.16, -0.02)]]
     write(a, "eval/tables/paired.csv", pl.DataFrame(rows))
     out = report_macros.build(a, None)
-    assert r"\csname pair:G-sage:B-hgb_all:mental_health:d_auroc\endcsname{-0.061}" in out      # pooled row, not seed 0
+    assert r"\csname pair:G-sage:B-hgb_all:mental_health:d_auroc\endcsname{\mbox{-0.061}}" in out      # pooled row, not seed 0
     assert r"\csname pair:G-sage:B-hgb_all:mental_health:n_excl\endcsname{4}" in out            # per-seed intervals excluding zero
     assert r"\csname pair:G-sage:B-hgb_all:mental_health:n_seeds\endcsname{5}" in out
     assert r"\csname pair:G-sage:B-hgb_all:mental_health:seed\endcsname{pooled}" in out
@@ -113,7 +113,7 @@ def test_macros_sex_gap_and_dev_oof_lookups(tmp_path):
     write(a, "results/baselines.csv", pl.DataFrame({"run_id": ["B-lr"], "target": ["cardiometabolic"], "seed": [0],
                                                     "dev_oof_auprc": [0.17], "test_auprc": [0.197], "test_auroc": [0.6]}))
     out = report_macros.build(a, None)
-    assert r"\csname sexgap:G-sage:cancer_hematologic:gap\endcsname{-0.182}" in out
+    assert r"\csname sexgap:G-sage:cancer_hematologic:gap\endcsname{\mbox{-0.182}}" in out
     assert r"\csname sexgap:G-sage:cancer_hematologic:pos_female\endcsname{50}" in out
     assert r"\newcommand{\sexgap}[3]" in out
     assert r"\csname res:G-sage:cardiometabolic:dev_oof_auprc\endcsname{0.270}" in out

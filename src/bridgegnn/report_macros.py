@@ -48,7 +48,10 @@ def _fmt(value, spec: str) -> str:
         return "n/a"
     if spec == "{:d}":
         return str(round(float(value)))
-    return spec.format(float(value))
+    text = spec.format(float(value))
+    if "+" in spec:
+        return r"\mbox{" + text + "}"   # signed deltas: keep the sign on the same line as the digits
+    return text
 
 
 def _csname(prefix: str, parts: list[str], value: str) -> str:

@@ -20,7 +20,7 @@ LABELS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT", "B2": "Bipartit
           "B-lr": "Code-bag LR", "B-hgb": "Graph-code boosting", "B-hgb_all": "All-code boosting", "B-mlp": "MLP",
           "B-mlp_pool": "Pooled MLP", "B-bridge_lr": "Bridge LR", "B-cov_lr": "Covariates-only LR"}
 # curated set for the report: the test-best GNN, the ablation backbone, the two strongest flat comparators, the reference
-REPORT_RUNS = ["G-gat", "G-sage", "B-cov_lr", "B-hgb_all", "B-prevalence"]
+REPORT_RUNS = ["G-gat", "G-sage", "B-bridge_lr", "B-cov_lr", "B-hgb_all", "B-prevalence"]
 STYLE = {"G-gat": ("#b2182b", "-"), "G-sage": ("#ef8a62", "-"), "G-gcn": ("#d6604d", "-."), "B-cov_lr": ("#2166ac", "--"),
          "B-bridge_lr": ("#4393c3", "--"), "B-hgb_all": ("#1b7837", ":"), "B-hgb": ("#5aae61", ":"), "B-mlp_pool": ("#762a83", "-."),
          "B-prevalence": ("#4d4d4d", (0, (1, 1)))}

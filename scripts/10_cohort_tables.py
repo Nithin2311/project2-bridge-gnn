@@ -90,7 +90,7 @@ def main() -> None:
     lines += [r"\hline", r"\end{tabular}"]
     (rep / "core-table.tex").write_text("\n".join(lines) + "\n")
 
-    lines = [r"\begin{tabular}{llrrr}", r"\hline", r"Target & Bridge code & Eligible rows carrying it & Positive rows carrying it & Eligible rows \\", r"\hline"]
+    lines = [r"\begin{tabular}{lp{0.42\textwidth}rrr}", r"\hline", r"Target & Bridge code & Eligible rows carrying it & Positive rows carrying it & Eligible rows \\", r"\hline"]
     for r in carriers.iter_rows(named=True):
         lines.append(f"{SHORT.get(r['target'], r['target'])} & {esc(r['category'])} {esc(names.get(r['category'], ''))} & {cell(r['n_rows'])} & {cell(r['n_pos_rows'])} & {r['n_rows_total']:,} \\\\")
     lines += [r"\hline", r"\end{tabular}"]
