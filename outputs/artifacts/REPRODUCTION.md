@@ -161,10 +161,10 @@ All eight remaining rows are row-count differences from the new metastatic and p
 
 ## Second pass (2026-11-20, after the review panel): controls and seed-pooled evaluation
 
-In the same clone, `git pull` to the panel-fix branch (`632247d`), then `07_experiments.py --ids B-cov_lr D1-empty`
+In the same clone, `git fetch` and checkout of the panel-fix branch at `67de427` (the control runs), then `07_experiments.py --ids B-cov_lr D1-empty`
 (covariates-only logistic regression on all targets; edgeless GraphSAGE on the primary targets), `10_cohort_tables.py`
 and `run_all.sh --from 08` (evaluation with seed-pooled paired rows and the sex-gap bootstrap, fragments, collect,
-macros). Step 08 took 24 min. Nothing upstream of step 08 was re-run, so every previously reported row is unchanged;
+macros), the latter at `632247d` after a further pull. Step 08 took 24 min on this pass (37 min on the pass that also carried the sex-gap bootstrap). Step 10 (cohort tables, new) was run; nothing upstream of step 08 among the modelling steps was re-run, so every previously reported row is unchanged;
 the comparison against the first-pass tree, excluding the runs that only exist in the second pass and the C1 rows:
 
 | file | column | status | max abs diff | rows old | rows new | note |
@@ -183,3 +183,14 @@ holds the seed-mean paired bootstrap (`metrics.paired_delta_seeds`): on each sha
 seeds of AUROC(A) minus the mean over the reference's seeds of AUROC(B); its point estimate equals the mean per-seed
 difference. `run_all.sh --from 08` was re-run in the clone at `7cb36a5` (step 08: 23 min). Nothing upstream changed.
 Per-seed rows are identical to the second pass; only the `seed = -1` rows changed.
+
+
+### Fourth pass (2026-11-20): report figure and multiplicity
+
+`scripts/08_figures.py` (new, label `08f`) drew `eval/figures/fig_main_<target>.pdf` in the clone at `2e6d57e`; it reads
+predictions only. Benjamini-Hochberg q-values over the seed-mean pairings are computed by `scripts/report_macros.py`
+and `scripts/08_report_baselines.py` from `paired.csv` (no re-run). Honest scope of the reproduction: the grid, baselines,
+evaluation and figures of the main run come from one command at `e98d56e`; B2, the covariates-only and edgeless controls,
+step 10 and the figures were added in the same clone at the later commits named above and were each run once. A reader
+who runs `run_all.sh` at `main` today gets all of them in one command; that single-command run has not itself been
+repeated.

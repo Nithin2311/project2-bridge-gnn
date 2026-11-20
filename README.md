@@ -62,13 +62,13 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 
 ## Reproduce from scratch
 
-Everything in `outputs/artifacts/` comes from one command on a fresh clone.
+Everything in `outputs/artifacts/` is produced by one command (`scripts/run_all.sh`); the committed tree was built by that command at `e98d56e` plus later additions run in the same clone (see `outputs/artifacts/REPRODUCTION.md` for the pass-by-pass record).
 
 Prerequisites:
 
 - **EHRShot** (Stanford; access under its data-use agreement, non-commercial, no re-identification, no redistribution):
   the 13 CSVs in one folder, pointed to by `EHRSHOT_DATA` (default `../FinalProject/data`).
-- **Project 1** at `../project1-bridge-dx`, commit `b851488`, with its `outputs/` produced by that repo's pipeline
+- **Project 1** at `../project1-bridge-dx` (https://github.com/Nithin2311/project1-bridge-dx, private; ask the authors), commit `b851488`, with its `outputs/` produced by that repo's pipeline
   (`uv run python run_all.py`, run of 2026-10-23). This repo imports it as a path dependency and reads, read-only:
   `graph_main.graphml`, `patient_split.csv`, `patient_category.parquet`, `target_definitions.csv`, `bridges.csv`,
   `nodes.csv`, `graph_nodes.csv`, `p2/node_features.csv`, `p2/p2_labels.parquet`, `p2/graph_backbone_topk.graphml`
