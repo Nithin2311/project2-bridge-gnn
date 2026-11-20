@@ -1,0 +1,95 @@
+target,category,name,in_chapter_block,prevalence
+cancer_hematologic,D64,Other anemias,false,0.2357373519913886
+cancer_hematologic,D72,Other disorders of white blood cells,false,0.14854682454251886
+cancer_hematologic,D69,Purpura and other hemorrhagic conditions,false,0.13275923932543954
+cancer_hematologic,D70,Neutropenia,true,0.06566200215285253
+cancer_hematologic,D61,Other aplastic anemias and other bone marrow failure syndromes,true,0.057050592034445645
+cancer_hematologic,D75,Other and unspecified diseases of blood and blood-forming organs,false,0.04592752063150341
+cancer_hematologic,D47,"Other neoplasms of uncertain behavior of lymphoid, hematopoietic and related tissue",true,0.04449228561176893
+cancer_hematologic,K12,Stomatitis and related lesions,false,0.03229278794402583
+cancer_hematologic,T46,"Poisoning by, adverse effect of and underdosing of agents primarily affecting the cardiovascular system",false,0.031216361679224976
+cancer_hematologic,D53,Other nutritional anemias,false,0.02475780409041981
+cancer_hematologic,T80,"Complications following infusion, transfusion and therapeutic injection",false,0.021528525296017224
+cancer_hematologic,C83,Non-follicular lymphoma,true,0.020093290276282743
+cancer_hematologic,L27,Dermatitis due to substances taken internally,false,0.020093290276282743
+cancer_hematologic,C85,Other specified and unspecified types of non-Hodgkin lymphoma,true,0.01865805525654826
+cancer_hematologic,D59,Acquired hemolytic anemia,false,0.014352350197344816
+cancer_hematologic,T45,"Poisoning by, adverse effect of and underdosing of primarily systemic and hematological agents, not elsewhere classified",false,0.013634732687477575
+cancer_hematologic,F40,Phobic anxiety disorders,false,0.012917115177610334
+cancer_hematologic,C92,Myeloid leukemia,true,0.012558306422676715
+cancer_hematologic,D46,Myelodysplastic syndromes,true,0.011123071402942232
+cancer_hematologic,K14,Diseases of tongue,false,0.010046645138141371
+cancer_hematologic,C90,Multiple myeloma and malignant plasma cell neoplasms,true,0.010046645138141371
+cancer_metastatic,C79,Secondary malignant neoplasm of other and unspecified sites,true,0.07355579476139218
+cancer_metastatic,C77,Secondary and unspecified malignant neoplasm of lymph nodes,true,0.06745604592752064
+cancer_metastatic,C80,Malignant neoplasm without specification of site,true,0.0527448869752422
+cancer_metastatic,C78,Secondary malignant neoplasm of respiratory and digestive organs,true,0.04700394689630427
+cancer_metastatic,I89,Other noninfective disorders of lymphatic vessels and lymph nodes,false,0.02475780409041981
+cancer_metastatic,C18,Malignant neoplasm of colon,false,0.022246142805884463
+cancer_metastatic,C49,Malignant neoplasm of other connective and soft tissue,true,0.01686401148188016
+cancer_metastatic,M84,Disorder of continuity of bone,false,0.013634732687477575
+cancer_metastatic,C76,Malignant neoplasm of other and ill-defined sites,false,0.011123071402942232
+cancer_metastatic,C20,Malignant neoplasm of rectum,false,0.010764262648008612
+cardiometabolic,I10,Essential (primary) hypertension,true,0.4969501255830643
+cardiometabolic,E78,Disorders of lipoprotein metabolism and other lipidemias,true,0.4768568353067815
+cardiometabolic,I25,Chronic ischemic heart disease,true,0.24363114459992824
+cardiometabolic,N18,Chronic kidney disease (CKD),true,0.235378543236455
+cardiometabolic,E11,Type 2 diabetes mellitus,true,0.23501973448152136
+cardiometabolic,I49,Other cardiac arrhythmias,true,0.2335844994617869
+cardiometabolic,I51,Complications and ill-defined descriptions of heart disease,false,0.214567635450305
+cardiometabolic,I45,Other conduction disorders,false,0.19268030139935416
+cardiometabolic,I50,Heart failure,true,0.1880157875852171
+cardiometabolic,I48,Atrial fibrillation and flutter,true,0.17725152493720847
+cardiometabolic,D62,Acute posthemorrhagic anemia,false,0.17151058485827056
+cardiometabolic,I47,Paroxysmal tachycardia,false,0.1388589881593111
+cardiometabolic,I44,Atrioventricular and left bundle-branch block,false,0.1374237531395766
+cardiometabolic,J81,Pulmonary edema,false,0.1194833153928956
+cardiometabolic,I42,Cardiomyopathy,false,0.09472551130247579
+cardiometabolic,I13,Hypertensive heart and chronic kidney disease,true,0.09400789379260854
+cardiometabolic,I21,Acute myocardial infarction,true,0.09329027628274131
+cardiometabolic,J44,Other chronic obstructive pulmonary disease,false,0.08934337997847148
+cardiometabolic,I11,Hypertensive heart disease,true,0.08539648367420166
+cardiometabolic,I27,Other pulmonary heart diseases,false,0.08216720487979907
+cardiometabolic,I34,Nonrheumatic mitral valve disorders,false,0.08109077861499821
+cardiometabolic,I08,Multiple valve diseases,false,0.08001435235019735
+cardiometabolic,I35,Nonrheumatic aortic valve disorders,false,0.07857911733046287
+cardiometabolic,I77,Other disorders of arteries and arterioles,false,0.07678507355579477
+cardiometabolic,I70,Atherosclerosis,false,0.07140294223179046
+cardiometabolic,I73,Other peripheral vascular diseases,false,0.06817366343738787
+cardiometabolic,T82,"Complications of cardiac and vascular prosthetic devices, implants and grafts",false,0.06422676713311805
+cardiometabolic,I31,Other diseases of pericardium,false,0.059203444564047365
+cardiometabolic,I71,Aortic aneurysm and dissection,false,0.05202726946537496
+cardiometabolic,M10,Gout,false,0.04915679942590599
+cardiometabolic,I65,"Occlusion and stenosis of precerebral arteries, not resulting in cerebral infarction",false,0.047362755651237896
+cardiometabolic,I24,Other acute ischemic heart diseases,true,0.04413347685683531
+cardiometabolic,J43,Emphysema,false,0.041263006817366346
+cardiometabolic,I07,Rheumatic tricuspid valve diseases,false,0.03480444922856118
+cardiometabolic,I97,"Intraoperative and postprocedural complications and disorders of circulatory system, not elsewhere classified",false,0.03444564047362756
+cardiometabolic,I36,Nonrheumatic tricuspid valve disorders,false,0.02870470039468963
+cardiometabolic,I20,Angina pectoris,true,0.02691065662002153
+cardiometabolic,I05,Rheumatic mitral valve diseases,false,0.02475780409041981
+cardiometabolic,Q21,Congenital malformations of cardiac septa,false,0.021169716541083603
+cardiometabolic,K04,Diseases of pulp and periapical tissues,false,0.020452099031216364
+cardiometabolic,Q24,Other congenital malformations of heart,false,0.0193756727664155
+cardiometabolic,I28,Other diseases of pulmonary vessels,false,0.01865805525654826
+cardiometabolic,K08,Other disorders of teeth and supporting structures,false,0.01829924650161464
+cardiometabolic,I74,Arterial embolism and thrombosis,false,0.0175816289917474
+cardiometabolic,I72,Other aneurysm,false,0.016505202726946538
+cardiometabolic,I99,Other and unspecified disorders of circulatory system,false,0.015428776462145678
+cardiometabolic,I38,"Endocarditis, valve unspecified",false,0.015428776462145678
+cardiometabolic,M1A,Chronic gout,false,0.014711158952278437
+cardiometabolic,I46,Cardiac arrest,false,0.014352350197344816
+cardiometabolic,K02,Dental caries,false,0.013993541442411196
+cardiometabolic,Q25,Congenital malformations of great arteries,false,0.012199497667743094
+cardiometabolic,Q23,Congenital malformations of aortic and mitral valves,false,0.012199497667743094
+cardiometabolic,I37,Nonrheumatic pulmonary valve disorders,false,0.011123071402942232
+mental_health,G47,Sleep disorders,false,0.2974524578399713
+mental_health,F41,Other anxiety disorders,true,0.25834230355220666
+mental_health,F32,Depressive episode,true,0.20487979906709725
+mental_health,F43,"Reaction to severe stress, and adjustment disorders",true,0.08467886616433441
+mental_health,G25,Other extrapyramidal and movement disorders,false,0.05346250448510944
+mental_health,F51,Sleep disorders not due to a substance or known physiological condition,false,0.04413347685683531
+mental_health,F33,"Major depressive disorder, recurrent",true,0.04269824183710083
+mental_health,F39,Unspecified mood [affective] disorder,true,0.0193756727664155
+mental_health,F31,Bipolar disorder,true,0.01794043774668102
+mental_health,G20,Parkinson's disease,false,0.014352350197344816

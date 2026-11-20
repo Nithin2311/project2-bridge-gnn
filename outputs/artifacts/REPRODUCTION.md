@@ -157,3 +157,20 @@ All eight remaining rows are row-count differences from the new metastatic and p
 `outputs/artifacts/` on `main` is the re-run tree (grid at `e98d56e`, B2 at `acb747b`), copied with
 `collect_artifacts.py`; `features_xcheck/` is the one-off cross-check kept from 2026-11-13 and is not produced by
 `run_all.sh`. The report's fragments and `macros.tex` were regenerated from this tree.
+
+
+## Second pass (2026-11-20, after the review panel): controls and seed-pooled evaluation
+
+In the same clone, `git pull` to the panel-fix branch (`632247d`), then `07_experiments.py --ids B-cov_lr D1-empty`
+(covariates-only logistic regression on all targets; edgeless GraphSAGE on the primary targets), `10_cohort_tables.py`
+and `run_all.sh --from 08` (evaluation with seed-pooled paired rows and the sex-gap bootstrap, fragments, collect,
+macros). Step 08 took 24 min. Nothing upstream of step 08 was re-run, so every previously reported row is unchanged;
+the comparison against the first-pass tree, excluding the runs that only exist in the second pass and the C1 rows:
+
+| file | column | status | max abs diff | rows old | rows new | note |
+|---|---|---|---|---|---|---|
+| eval/tables/paired.csv | * | exceeds |  | 225 | 516 | rows differ: 225 old, 516 new, 225 matched on ['run_id', 'baseline', 'target', 'seed'] |
+| eval/tables/sex_gap.csv | * | missing_file |  |  |  | absent in old |
+
+The remaining rows are the added runs (new rows in the results and evaluation tables) and the paired table, which
+now carries one seed-pooled row (`seed = -1`) per pairing and pairs against five references instead of two.
