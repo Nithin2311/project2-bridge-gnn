@@ -39,8 +39,18 @@ def _deterministic_mask(df: pl.DataFrame) -> np.ndarray:
     return np.ones(df.height, dtype=bool)
 
 
-def _compare_csv(rel: str, old_f: Path, new_f: Path, tol: float) -> list[dict]:
+def _drop_runs(df: pl.DataFrame, prefixes: list[str]) -> pl.DataFrame:
+    if not prefixes or "run_id" not in df.columns:
+        return df
+    keep = pl.lit(True)
+    for p in prefixes:
+        keep = keep & ~pl.col("run_id").cast(pl.Utf8).str.starts_with(p)
+    return df.filter(keep)
+
+
+def _compare_csv(rel: str, old_f: Path, new_f: Path, tol: float, exclude_runs: list[str] | None = None) -> list[dict]:
     a, b = pl.read_csv(old_f, infer_schema_length=None), pl.read_csv(new_f, infer_schema_length=None)
+    a, b = _drop_runs(a, exclude_runs or []), _drop_runs(b, exclude_runs or [])
     rows = []
     for c in a.columns:
         if c not in b.columns:
@@ -128,7 +138,8 @@ def _compare_npy(rel: str, old_f: Path, new_f: Path) -> dict:
     return _row(rel, "matrix", "exact" if diff == 0.0 else "exceeds", diff, a.shape[0], b.shape[0])
 
 
-def compare_dirs(old: Path, new: Path, tol: float = 0.02) -> pl.DataFrame:
+def compare_dirs(old: Path, new: Path, tol: float = 0.02, exclude_runs: list[str] | None = None) -> pl.DataFrame:
+    """`exclude_runs`: run_id prefixes dropped from both trees before comparing (e.g. runs whose inputs changed by design)."""
     old, new = Path(old), Path(new)
     rows: list[dict] = []
     rels = set()
@@ -142,7 +153,7 @@ def compare_dirs(old: Path, new: Path, tol: float = 0.02) -> pl.DataFrame:
         elif not n.exists():
             rows.append(_row(rel, "*", "missing_file", note="absent in new"))
         else:
-            rows.extend(_compare_csv(rel, o, n, tol))
+            rows.extend(_compare_csv(rel, o, n, tol, exclude_runs))
     for rel in NPY_FILES:
         o, n = old / rel, new / rel
         if o.exists() and n.exists():

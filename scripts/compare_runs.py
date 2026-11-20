@@ -17,8 +17,9 @@ def main() -> int:
     ap.add_argument("new", type=Path)
     ap.add_argument("--tol", type=float, default=0.02, help="max AUROC/AUPRC drift tolerated for torch runs")
     ap.add_argument("--md", type=Path, help="write the comparison table (non-exact rows) as Markdown")
+    ap.add_argument("--exclude-runs", nargs="*", default=[], help="run_id prefixes dropped from both trees before comparing")
     args = ap.parse_args()
-    df = compare.compare_dirs(args.old, args.new, args.tol)
+    df = compare.compare_dirs(args.old, args.new, args.tol, args.exclude_runs)
     md = compare.to_markdown(df)
     print(md)
     if args.md:

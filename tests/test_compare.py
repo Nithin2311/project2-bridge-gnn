@@ -136,3 +136,13 @@ def test_compare_params_json_ignores_null_valued_keys(tmp_path):
     old, new = two_trees(tmp_path, new_gnn=gnn_rows(params=b))
     write(old, "results/gnn.csv", gnn_rows(params=a))
     assert status_of(compare.compare_dirs(old, new), "results/gnn.csv", "params_json") == "exact"
+
+
+def test_compare_exclude_runs_drops_rows_from_both_trees(tmp_path):
+    extra = pl.concat([gnn_rows(), gnn_rows().with_columns(pl.lit("C1-25").alias("run_id"), pl.lit(0.3).alias("test_auroc"))])
+    old = tmp_path / "old"; new = tmp_path / "new"
+    write(old, "results/gnn.csv", extra)
+    write(new, "results/gnn.csv", extra.with_columns(pl.when(pl.col("run_id") == "C1-25").then(0.5).otherwise(pl.col("test_auroc")).alias("test_auroc")))
+    assert status_of(compare.compare_dirs(old, new), "results/gnn.csv", "test_auroc") == "exceeds"
+    df = compare.compare_dirs(old, new, exclude_runs=["C1-"])
+    assert set(df.filter(pl.col("file") == "results/gnn.csv")["status"].to_list()) == {"exact"}
