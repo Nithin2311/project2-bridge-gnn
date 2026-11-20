@@ -120,3 +120,32 @@ def paired_delta(y: np.ndarray, p_a: np.ndarray, p_b: np.ndarray, person_id: np.
         lo, hi = (np.percentile(ds, [2.5, 97.5]) if ds else (float("nan"), float("nan")))
         out.update({f"d_{name}": float(point), f"d_{name}_lo": float(lo), f"d_{name}_hi": float(hi)})
     return out
+
+
+def sex_gap(df: pl.DataFrame, n: int, seed: int) -> dict:
+    """Female-minus-male AUROC on seed-pooled test predictions with a patient-level percentile bootstrap of the gap.
+    `df` has person_id, y, p, sex (one row per patient-landmark)."""
+    y, p = df["y"].to_numpy().astype(int), df["p"].to_numpy()
+    fem = (df["sex"].to_numpy() == "female")
+    pid = df["person_id"].to_numpy()
+
+    def both(mask):
+        yy, pp = y[mask], p[mask]
+        return auroc(yy, pp) if 0 < yy.sum() < len(yy) else None
+
+    af, am = both(fem), both(~fem)
+    gaps = []
+    for idx in _patient_resamples(pid, n, seed):
+        m = fem[idx]
+        a, b = both_idx(y[idx], p[idx], m), both_idx(y[idx], p[idx], ~m)
+        if a is not None and b is not None:
+            gaps.append(a - b)
+    lo, hi = (np.percentile(gaps, [2.5, 97.5]) if gaps else (float("nan"), float("nan")))
+    return {"n_female": int(fem.sum()), "n_male": int((~fem).sum()), "pos_female": int(y[fem].sum()), "pos_male": int(y[~fem].sum()),
+            "auroc_female": af, "auroc_male": am, "gap": (af - am) if af is not None and am is not None else None,
+            "gap_lo": float(lo), "gap_hi": float(hi), "n_boot": len(gaps)}
+
+
+def both_idx(y, p, mask):
+    yy, pp = y[mask], p[mask]
+    return auroc(yy, pp) if len(yy) and 0 < yy.sum() < len(yy) else None

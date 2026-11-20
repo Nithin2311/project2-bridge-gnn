@@ -127,13 +127,23 @@ def summarise(preds: pl.DataFrame, rows: pl.DataFrame, cfg: dict) -> dict[str, p
                 raise ValueError(f"labels differ between {run_id} and {ref} on shared rows ({target}, seed {s})")
             d = metrics.paired_delta(m["y"].to_numpy().astype(int), m["p"].to_numpy(), m["p_b"].to_numpy(), m["person_id"].to_numpy(), nb, seed)
             paired.append({"run_id": run_id, "baseline": ref, "target": target, "seed": int(s), "n": m.height, **d})
+    gap_runs = set(E.get("paired_gnn_runs") or []) | set(E.get("baselines_for_pairing") or [])
+    if not E.get("paired_gnn_runs"):
+        gap_runs = set(P["run_id"].to_list())
+    sex_gap = []
+    for run_id in sorted(gap_runs & set(P["run_id"].to_list())):
+        for target in sorted({t for r, t, _ in keys if r == run_id}):
+            pooled = test_preds.filter((pl.col("run_id") == run_id) & (pl.col("target") == target)).group_by(
+                "person_id", "index_date").agg(pl.col("p").mean(), pl.col("y").first(), pl.col("sex").first())
+            sex_gap.append({"run_id": run_id, "target": target, **metrics.sex_gap(pooled, nb, seed)})
     schema = {"run_id": pl.Utf8, "baseline": pl.Utf8, "target": pl.Utf8, "seed": pl.Int64, "n": pl.Int64,
               "d_auroc": pl.Float64, "d_auroc_lo": pl.Float64, "d_auroc_hi": pl.Float64, "d_auprc": pl.Float64, "d_auprc_lo": pl.Float64, "d_auprc_hi": pl.Float64}
     paired_df = pl.DataFrame(paired, schema=schema) if paired else pl.DataFrame(schema=schema)
     return {"runs": runs_df, "runs_agg": agg,
             "reliability": pl.concat(rel) if rel else pl.DataFrame(),
             "strata": pl.concat(strata) if strata else pl.DataFrame(),
-            "paired": paired_df}
+            "paired": paired_df,
+            "sex_gap": pl.DataFrame(sex_gap) if sex_gap else pl.DataFrame()}
 
 
 def _esc(s: str) -> str:

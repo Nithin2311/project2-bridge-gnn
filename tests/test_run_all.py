@@ -9,6 +9,7 @@ def test_collect_runs_before_macros():
     labels = re.findall(r"^run_step (\S+) ", SCRIPT, flags=re.MULTILINE)
     assert labels.index("collect") < labels.index("macros")
     assert labels.index("08b") < labels.index("collect")
+    assert labels.index("01") < labels.index("10") < labels.index("08")
 
 
 def test_run_all_logs_the_commit():

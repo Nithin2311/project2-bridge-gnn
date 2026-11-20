@@ -18,6 +18,7 @@ PATTERNS: list[tuple[str, str]] = [
     ("pre2020/bridges.csv", "pre2020"),
     ("pre2020/target_definitions.csv", "pre2020"),
     ("pre2020/node_features.csv", "pre2020"),
+    ("cohort/*.csv", "cohort"),
     # step 02 writes nodes.csv, graph_edges.csv and construction_thresholds.json straight into outputs/artifacts/
     ("features/node_index.csv", ""),
     ("features/node_x.npy", ""),

@@ -60,7 +60,10 @@ with pl.Config(tbl_rows=60, tbl_width_chars=170, float_precision=3):
         print(tabs["paired"].group_by("run_id", "baseline", "target").agg(pl.col("d_auroc").mean(), pl.col("d_auprc").mean()).sort("target"))
 
 # ---- figures: ROC / PR for the main runs (seed 0), reliability, training curves ----
-main_runs = [r for r in agg["run_id"].unique().to_list() if r.startswith(("G-", "B-"))]
+main_runs = [r for r in agg["run_id"].unique().to_list() if r.startswith(("G-", "B-", "B2"))]
+LABELS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT", "B2": "Bipartite (hetero)", "B-prevalence": "Prevalence",
+          "B-lr": "Logistic regression", "B-hgb": "Graph-code boosting", "B-hgb_all": "All-code boosting", "B-mlp": "MLP",
+          "B-mlp_pool": "Pooled MLP", "B-bridge_lr": "Bridge LR", "B-cov_lr": "Covariates-only LR"}
 for target in agg["target"].unique().to_list():
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.4))
     for run_id in sorted(main_runs):
@@ -71,11 +74,11 @@ for target in agg["target"].unique().to_list():
         y, p = s0["y"].to_numpy().astype(int), s0["p"].to_numpy()
         fpr, tpr, _ = roc_curve(y, p)
         prec, rec, _ = precision_recall_curve(y, p)
-        axes[0].plot(fpr, tpr, label=run_id, lw=1)
+        axes[0].plot(fpr, tpr, label=LABELS.get(run_id, run_id), lw=1)
         if run_id == "B-prevalence":
-            axes[1].axhline(y.mean(), label=run_id, lw=1)
+            axes[1].axhline(y.mean(), label=LABELS.get(run_id, run_id), lw=1)
         else:
-            axes[1].step(rec, prec, where="post", label=run_id, lw=1)
+            axes[1].step(rec, prec, where="post", label=LABELS.get(run_id, run_id), lw=1)
     axes[0].plot([0, 1], [0, 1], "k--", lw=0.6); axes[0].set_xlabel("false positive rate"); axes[0].set_ylabel("true positive rate"); axes[0].set_title(f"ROC, {target} (first seed)")
     axes[1].set_xlabel("recall"); axes[1].set_ylabel("precision"); axes[1].set_title(f"PR, {target} (first seed)")
     axes[0].legend(fontsize=7, frameon=False)
@@ -86,7 +89,7 @@ for target in agg["target"].unique().to_list():
         for run_id in sorted(main_runs):
             r = rel.filter((pl.col("run_id") == run_id) & (pl.col("target") == target))
             if r.height:
-                ax.plot(r["p_mean"], r["y_rate"], marker="o", ms=3, lw=1, label=run_id)
+                ax.plot(r["p_mean"], r["y_rate"], marker="o", ms=3, lw=1, label=LABELS.get(run_id, run_id))
         sub = rel.filter((pl.col("target") == target) & pl.col("run_id").is_in(main_runs))
         lim = max(0.05, float(max(sub["p_mean"].max() or 0, sub["y_rate"].max() or 0)) * 1.1)
         ax.plot([0, lim], [0, lim], "k--", lw=0.6); ax.set_xlim(0, lim); ax.set_ylim(0, lim); ax.set_aspect("equal")

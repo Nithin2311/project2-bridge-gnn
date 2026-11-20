@@ -46,7 +46,7 @@ def preds_two_runs():
 def test_summarise_produces_all_tables(preds_two_runs):
     rows = make_rows(preds_two_runs)
     out = report.summarise(preds_two_runs, rows, CFG)
-    assert set(out) == {"runs", "runs_agg", "reliability", "strata", "paired"}
+    assert set(out) == {"runs", "runs_agg", "reliability", "strata", "paired", "sex_gap"}
     runs = out["runs"]
     assert runs.height == 4 and {"run_id", "target", "seed", "auroc", "auprc", "brier", "slope", "citl", "f1", "threshold", "threshold_source",
                                  "pred_pos_rate", "degenerate_threshold", "tp", "fp", "fn", "tn", "n", "pos"} <= set(runs.columns)
@@ -130,3 +130,12 @@ def test_paired_includes_a_seed_pooled_row_and_per_seed_rows(preds_two_runs):
     pooled = p.filter(pl.col("seed") == -1).row(0, named=True)
     assert pooled["d_auroc_lo"] <= pooled["d_auroc"] <= pooled["d_auroc_hi"]
     assert pooled["n"] == p.filter(pl.col("seed") == 0)["n"][0]
+
+
+def test_sex_gap_table_bootstraps_female_minus_male_auroc_on_pooled_predictions(preds_two_runs):
+    tabs = report.summarise(preds_two_runs, make_rows(preds_two_runs), CFG)
+    g = tabs["sex_gap"]
+    assert set(g.columns) >= {"run_id", "target", "n_female", "n_male", "pos_female", "pos_male", "auroc_female", "auroc_male", "gap", "gap_lo", "gap_hi"}
+    assert set(g["run_id"]) == {"G-sage", "B-hgb_all"}
+    r = g.filter(pl.col("run_id") == "G-sage").row(0, named=True)
+    assert r["gap_lo"] <= r["gap"] <= r["gap_hi"] and abs(r["gap"] - (r["auroc_female"] - r["auroc_male"])) < 1e-9

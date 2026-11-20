@@ -3,7 +3,7 @@
 # the step 07 driver, evaluation, report fragments and macros, then the aggregate artifact copy.
 #
 #   ./scripts/run_all.sh             full run (~9 h on an M4: grid ~6 h, baselines ~1.5 h, evaluation < 15 min)
-#   ./scripts/run_all.sh --from 06   resume at a label (labels: 00 01 02 03 04 05 06 07 09 08 08b collect macros)
+#   ./scripts/run_all.sh --from 06   resume at a label (labels: 00 01 02 03 04 10 05 06 07 09 08 08b collect macros)
 #   ./scripts/run_all.sh --check     tests, grid dry run and input check only (~2 min)
 #
 # Every step appends START/END lines with timestamps, elapsed seconds and exit code to outputs/logs/run_all.log.
@@ -21,7 +21,7 @@ while [ $# -gt 0 ]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
-LABELS=(00 01 02 03 04 05 06 07 09 08 08b collect macros)
+LABELS=(00 01 02 03 04 10 05 06 07 09 08 08b collect macros)
 echo "RUN $(date -u +%Y-%m-%dT%H:%M:%SZ) commit=$(git rev-parse HEAD 2>/dev/null || echo unknown) args=$*" | tee -a "$LOG"
 STARTED=0
 [ -z "$FROM" ] && STARTED=1
@@ -60,6 +60,7 @@ run_step 01 uv run python scripts/01_rows.py
 run_step 02 uv run python scripts/02_features.py
 run_step 03 uv run python scripts/03_directed_layer.py
 run_step 04 uv run python scripts/04_motifs.py
+run_step 10 uv run python scripts/10_cohort_tables.py
 run_step 05 uv run python scripts/07_experiments.py --only-baselines
 run_step 06 uv run python scripts/07_experiments.py --ids G-gcn G-sage G-gat
 # shellcheck disable=SC2086
