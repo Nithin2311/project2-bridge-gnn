@@ -1,0 +1,17 @@
+target,split,rows,patients,positives,censored
+cancer_hematologic,all,5903,1434,315,460
+cancer_hematologic,test,1907,453,91,155
+cancer_hematologic,train,1914,465,114,148
+cancer_hematologic,val,2082,516,110,157
+cancer_metastatic,all,9705,2020,117,742
+cancer_metastatic,test,3085,646,42,245
+cancer_metastatic,train,3372,688,38,257
+cancer_metastatic,val,3248,686,37,240
+cardiometabolic,all,1863,554,163,182
+cardiometabolic,test,664,194,56,70
+cardiometabolic,train,616,175,50,55
+cardiometabolic,val,583,185,57,57
+mental_health,all,4819,1211,282,389
+mental_health,test,1518,385,83,143
+mental_health,train,1655,410,100,124
+mental_health,val,1646,416,99,122

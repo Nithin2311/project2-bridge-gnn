@@ -181,6 +181,14 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             scalars[f"medianNodes{k}"] = _fmt(r["median_nodes"], "{:d}")
             scalars[f"qOneNodes{k}"] = _fmt(r["q1_nodes"], "{:d}")
             scalars[f"qThreeNodes{k}"] = _fmt(r["q3_nodes"], "{:d}")
+    lc_f = artifacts / "cohort/label_counts.csv"
+    if lc_f.exists():
+        for r in pl.read_csv(lc_f, infer_schema_length=None).iter_rows(named=True):
+            k = short.get(r["target"], r["target"])
+            if r["split"] == "all":
+                scalars[f"nCensored{k}"] = _fmt(r["censored"], "{:d}")
+            elif r["split"] == "test":
+                scalars[f"nCensoredTest{k}"] = _fmt(r["censored"], "{:d}")
     coh_f = artifacts / "cohort/cohort.csv"
     if coh_f.exists():
         for r in pl.read_csv(coh_f, infer_schema_length=None).iter_rows(named=True):

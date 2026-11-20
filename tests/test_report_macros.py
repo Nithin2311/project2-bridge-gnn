@@ -144,3 +144,11 @@ def test_macros_emit_bh_q_values_over_the_pooled_pairings(tmp_path):
     q = {m.group(1): float(m.group(2)) for m in re.finditer(r"pair:(\S+?):B-cov_lr:mental_health:q_bh\\endcsname\{([0-9.]+)\}", out)}
     assert q["G-sage"] < 0.01 and 0.03 < q["A1a"] < 0.06 and q["B1"] > q["A1a"]   # family of three here; ~100 in the real table
     assert r"\newcommand{\nPairings}{3}" in out
+
+
+def test_macros_censored_counts_from_label_counts(tmp_path):
+    a = tree(tmp_path)
+    write(a, "cohort/label_counts.csv", pl.DataFrame({"target": ["cardiometabolic", "cardiometabolic"], "split": ["all", "test"],
+                                                     "rows": [1863, 664], "positives": [163, 56], "censored": [182, 70]}))
+    out = report_macros.build(a, None)
+    assert r"\newcommand{\nCensoredCM}{182}" in out and r"\newcommand{\nCensoredTestCM}{70}" in out

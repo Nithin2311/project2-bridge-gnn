@@ -48,7 +48,13 @@ def main() -> None:
     members = cohort.core_members(tdef, nf)
     flags = {t: sorted(nodefeat.bflag_codes(nf, bridges, t)) for t in targets}
     carriers = cohort.bridge_carriers(rows, row_codes, flags)
-    for name, df in [("cohort", coh), ("triggering_codes", trig), ("subgraph_sizes", sizes), ("core_members", members), ("bridge_carriers", carriers)]:
+    # Project 1's label counts for the task definition: rows, positives and censored rows (death or record end inside
+    # the horizon) per target and split, an aggregate table copied for the report
+    lc = pl.read_csv(p1 / "p2_label_counts.csv")
+    lc = lc.filter((pl.col("definition") == cfg["task"]["definition"]) & (pl.col("horizon_months") == int(cfg["task"]["horizon_months"])))
+    lc = lc.select("target", "split", "rows", "patients", "positives", "censored")
+    for name, df in [("cohort", coh), ("triggering_codes", trig), ("subgraph_sizes", sizes), ("core_members", members), ("bridge_carriers", carriers),
+                     ("label_counts", lc)]:
         df.write_csv(out / "cohort" / f"{name}.csv")
 
     # ---- LaTeX fragments ----
