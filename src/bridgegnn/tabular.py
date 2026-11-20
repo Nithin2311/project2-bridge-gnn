@@ -30,8 +30,10 @@ GROUPS = {
     "mlp": ("CODE", "DEMO", "UTIL", "BRIDGE"),
     "mlp_pool": ("CODE", "DEMO", "UTIL", "TEMP", "BRIDGE", "POOL"),
     "bridge_lr": ("BRIDGE", "DEMO", "UTIL"),
+    "cov_lr": ("DEMO", "UTIL"),   # covariates-only control: what bridge_lr adds beyond age, sex and utilisation
 }
 MODELS = list(GROUPS)
+LRS = {"lr", "bridge_lr", "cov_lr"}
 MLPS = {"mlp", "mlp_pool"}
 BOOSTERS = {"hgb", "hgb_all"}
 PREFIX = {"CODE": "c_", "ALL": "all_", "DEMO": "demo_", "UTIL": "util_", "TEMP": "temp_",
@@ -40,7 +42,7 @@ PREFIX = {"CODE": "c_", "ALL": "all_", "DEMO": "demo_", "UTIL": "util_", "TEMP":
 
 def seed_invariant(model: str, n_dev: int) -> bool:
     # With all features and no early stopping, HistGB only uses randomness for binning large samples.
-    return model in {"prevalence", "lr", "bridge_lr"} or (model in BOOSTERS and n_dev <= 200_000)
+    return model == "prevalence" or model in LRS or (model in BOOSTERS and n_dev <= 200_000)
 
 
 def feature_columns(model: str, columns: list[str]) -> list[str]:
@@ -51,7 +53,7 @@ def feature_columns(model: str, columns: list[str]) -> list[str]:
 def grid(model: str) -> list[dict]:
     if model == "prevalence":
         return [{}]
-    if model in {"lr", "bridge_lr"}:
+    if model in LRS:
         return [{"C": c, "class_weight": "balanced", "max_iter": 2000} for c in (0.01, 0.1, 1.0)]
     if model in BOOSTERS:
         # the number of boosting rounds is tuned (design section 7: baselines tuned as carefully as the GNNs)
@@ -67,7 +69,7 @@ def grid(model: str) -> list[dict]:
 def make(model: str, params: dict, seed: int):
     if model == "prevalence":
         return DummyClassifier(strategy="prior")
-    if model in {"lr", "bridge_lr"}:
+    if model in LRS:
         return make_pipeline(StandardScaler(), LogisticRegression(random_state=seed, **params))
     if model in BOOSTERS:
         return HistGradientBoostingClassifier(random_state=seed, **params)

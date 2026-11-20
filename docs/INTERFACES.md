@@ -20,7 +20,7 @@ uv run python scripts/05_baselines.py --run-id B-lr --target cardiometabolic --m
 |---|---|---|
 | `--run-id` | letters, digits, hyphens, underscores | `B-<model>` |
 | `--target` | cardiometabolic, cancer_hematologic, mental_health, cancer_metastatic | required |
-| `--model` | prevalence, lr, hgb, hgb_all, mlp, mlp_pool, bridge_lr | required |
+| `--model` | prevalence, lr, hgb, hgb_all, mlp, mlp_pool, bridge_lr, cov_lr (DEMO + UTIL only: the covariates-only control) | required |
 | `--seeds` | integers | `cfg.seeds` |
 | `--subsample-file` | path template with a literal `{seed}`, e.g. `outputs/subsamples/C1-25_seed{seed}.txt`; for each seed the script reads that file (one development `person_id` per line) and uses only those patients' development rows for selection and refit; test untouched. The driver writes these files with `driver.subsample_patients` so step 05 and step 06 train on identical subsets | none |
 | `--synthetic` | run the same code path on `synth.make(0)` in a temp dir | off |
@@ -56,7 +56,7 @@ uv run python scripts/06_gnn.py --run-id A1a --target cardiometabolic --arch sag
 | `--hidden` | 32, 64, 128 | 64 |
 | `--seeds` | integers | `cfg.seeds` |
 | `--subsample-file` | as step 05 (same `{seed}` template; the only subsampling mechanism, so both steps see identical subsets) | none |
-| `--null-graph` | none, rewire0 .. rewire4, shuffle (requires `--layer N`) | none |
+| `--null-graph` | none, rewire0 .. rewire4, shuffle, empty (Layer U nodes with no edges: the edgeless control; all require `--layer N`) | none |
 | `--drop-codes` | none, bridge (remove the target's B-flag codes from the subgraph and the UTIL code counts) | none |
 | `--node-features-dir` | directory with `node_index.csv`, `node_x.npy`, `feature_groups.json`; default `outputs/features/` (step 02) if present, else built into `outputs/features_xcheck/` from Project 1 files | auto |
 | `--layer-file` | graphml path; overrides `--layer`; recorded as `layer: file:<stem>`; direction read from the file | none |
@@ -112,7 +112,7 @@ Reads every `outputs/predictions/*.parquet` and `outputs/rows.parquet`; writes `
 reliability,strata,paired}.csv`, `runs_agg.tex`, `paired.tex`, and `outputs/eval/figures/{roc_pr,reliability}_{target}.pdf`,
 `curves_<run>_<target>.pdf`. Paired deltas (identical test rows, patient bootstrap) are computed for the runs in
 `eval.paired_gnn_runs` against each of `eval.baselines_for_pairing` whose predictions exist (step 05), plus every
-explicit `[run, reference]` pair in `eval.paired_runs`; no other pairs are bootstrapped. Strata: sex, age band, subgraph-size bin, index year;
+explicit `[run, reference]` pair in `eval.paired_runs`; no other pairs are bootstrapped. Each pairing has one row per seed plus a row with `seed = -1` that pairs the seed-averaged test predictions of the two runs (the interval the report quotes); the per-seed rows give the count of intervals excluding zero. Strata: sex, age band, subgraph-size bin, index year;
 fewer than `eval.min_stratum_pos` positives prints n/a.
 
 ## Step 09 — pre-2020 rebuild and backtest (Nithin)

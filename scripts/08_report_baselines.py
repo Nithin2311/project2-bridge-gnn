@@ -19,9 +19,9 @@ TARGETS = {"cardiometabolic": "CM", "cancer_hematologic": "Heme", "mental_health
 BASELINES = {
     "B-prevalence": "Prevalence", "B-lr": "Logistic regression", "B-hgb": "Graph-code boosting",
     "B-hgb_all": "All-code boosting", "B-mlp": "MLP", "B-mlp_pool": "Pooled MLP",
-    "B-bridge_lr": "Bridge logistic regression",
+    "B-bridge_lr": "Bridge logistic regression", "B-cov_lr": "Covariates-only logistic regression",
 }
-DETERMINISTIC = {"B-prevalence", "B-lr", "B-hgb", "B-hgb_all", "B-bridge_lr"}
+DETERMINISTIC = {"B-prevalence", "B-lr", "B-hgb", "B-hgb_all", "B-bridge_lr", "B-cov_lr"}
 GNNS = {"G-gcn": "GCN", "G-sage": "GraphSAGE", "G-gat": "GAT"}
 HETERO = {"B2": "Bipartite (hetero)"}   # extra-credit variant: listed with the GNNs when its five-seed rows exist
 REWIRES = [f"D1-rewire{i}" for i in range(5)]
@@ -45,7 +45,7 @@ def format_params(row: dict) -> str:
     model = row["model"]
     if model == "prevalence":
         return "Development prior"
-    if model in {"lr", "bridge_lr"}:
+    if model in {"lr", "bridge_lr", "cov_lr"}:
         return rf"$C={p['C']:g}$"
     if model in {"hgb", "hgb_all"}:
         return rf"$\eta={p['learning_rate']:g}$, {p['max_leaf_nodes']} leaves, {p['max_iter']} rounds"

@@ -44,7 +44,8 @@ def parse_args(argv=None):
     ap.add_argument("--heads", type=int, default=int(g["heads"]))
     ap.add_argument("--hidden", type=int, default=int(g["hidden"]))
     ap.add_argument("--seeds", type=int, nargs="+", default=[int(s) for s in cfg["seeds"]])
-    ap.add_argument("--null-graph", default="none", choices=["none", "rewire0", "rewire1", "rewire2", "rewire3", "rewire4", "shuffle"])
+    ap.add_argument("--null-graph", default="none", choices=["none", "rewire0", "rewire1", "rewire2", "rewire3", "rewire4", "shuffle", "empty"],
+                    help="empty = Layer U nodes with no edges: the same node features without any message passing")
     ap.add_argument("--drop-codes", default="none", choices=["none", "bridge"])
     ap.add_argument("--subsample-file", default=None, help="path template with {seed}; one development person_id per line")
     ap.add_argument("--node-features-dir", default=None)
@@ -73,6 +74,10 @@ def load_layer(args, cfg) -> tuple[nx.Graph | nx.DiGraph, bool]:
         return nx.read_graphml(out / "layers" / "graph_directed.graphml"), True
     if args.null_graph == "none":
         sys.exit("--layer N needs --null-graph")
+    if args.null_graph == "empty":
+        g = nx.read_graphml(p1 / "graph_main.graphml")
+        g.remove_edges_from(list(g.edges()))
+        return g, False
     return nx.read_graphml(out / "layers" / "null" / f"{args.null_graph}.graphml"), False
 
 

@@ -91,3 +91,7 @@ def test_grid_contains_b2():
     grid = yaml.safe_load((Path(__file__).resolve().parents[1] / "config" / "experiments.yaml").read_text())
     b2 = [e for e in grid["experiments"] if e["id"] == "B2"]
     assert len(b2) == 1 and b2[0]["base"] == "gnn" and b2[0]["family"] == "B" and b2[0]["overrides"]["arch"] == "hetero"
+    cov = [e for e in grid["experiments"] if e["id"] == "B-cov_lr"]
+    assert len(cov) == 1 and cov[0]["overrides"]["model"] == "cov_lr" and cov[0]["targets"] == "all"
+    empty = [e for e in grid["experiments"] if e["id"] == "D1-empty"]
+    assert len(empty) == 1 and empty[0]["overrides"] == {"layer": "N", "null-graph": "empty"} and empty[0]["family"] == "D"

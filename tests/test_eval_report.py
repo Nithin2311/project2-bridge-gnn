@@ -59,7 +59,7 @@ def test_summarise_produces_all_tables(preds_two_runs):
     assert out["reliability"].filter(pl.col("run_id") == "G-sage").height == 5
     paired = out["paired"]
     # one pairing from baselines_for_pairing and the same pairing again from paired_runs -> deduplicated
-    assert paired.height == 2 and set(paired["baseline"]) == {"B-hgb_all"} and {"d_auroc", "d_auroc_lo", "d_auroc_hi", "d_auprc"} <= set(paired.columns)
+    assert paired.height == 3 and set(paired["baseline"]) == {"B-hgb_all"} and {"d_auroc", "d_auroc_lo", "d_auroc_hi", "d_auprc"} <= set(paired.columns)   # 2 seeds + the seed-pooled row
 
 
 def test_paired_skipped_without_baseline(preds_two_runs):
@@ -105,7 +105,7 @@ def test_paired_runs_pairing_between_two_gnn_runs():
     a = make_preds("B5-P", "sage", [0], seed=5); b = make_preds("B5-U", "sage", [0], seed=6)
     cfg = {"eval": {**CFG["eval"], "baselines_for_pairing": [], "paired_runs": [["B5-P", "B5-U"]]}, "task": CFG["task"]}
     out = report.summarise(pl.concat([a, b]), make_rows(pl.concat([a, b])), cfg)
-    assert out["paired"].height == 1 and out["paired"]["baseline"][0] == "B5-U"
+    assert out["paired"].height == 2 and set(out["paired"]["baseline"]) == {"B5-U"} and sorted(out["paired"]["seed"]) == [-1, 0]
 
 
 def test_pairings_restricted_to_configured_gnn_runs():
@@ -119,3 +119,14 @@ def test_pairings_fallback_when_unrestricted():
     e = {"baselines_for_pairing": ["B-hgb_all"], "paired_runs": []}
     pairs = report._pairings(e, {"G-sage", "E3-h32", "B-hgb_all"})
     assert pairs == [("E3-h32", "B-hgb_all"), ("G-sage", "B-hgb_all")]
+
+
+def test_paired_includes_a_seed_pooled_row_and_per_seed_rows(preds_two_runs):
+    """seed == -1 pairs the seed-averaged test predictions of both runs (one interval that uses every seed);
+    per-seed rows stay for the count of per-seed intervals excluding zero."""
+    tabs = report.summarise(preds_two_runs, make_rows(preds_two_runs), CFG)
+    p = tabs["paired"].filter((pl.col("run_id") == "G-sage") & (pl.col("baseline") == "B-hgb_all"))
+    assert sorted(p["seed"].to_list()) == [-1, 0, 1]
+    pooled = p.filter(pl.col("seed") == -1).row(0, named=True)
+    assert pooled["d_auroc_lo"] <= pooled["d_auroc"] <= pooled["d_auroc_hi"]
+    assert pooled["n"] == p.filter(pl.col("seed") == 0)["n"][0]

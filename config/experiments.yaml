@@ -16,6 +16,7 @@ experiments:
   - {id: B-mlp, family: baseline, base: baseline, targets: primary, overrides: {model: mlp}}
   - {id: B-mlp_pool, family: baseline, base: baseline, targets: all, overrides: {model: mlp_pool}}
   - {id: B-bridge_lr, family: baseline, base: baseline, targets: all, overrides: {model: bridge_lr}}
+  - {id: B-cov_lr, family: baseline, base: baseline, targets: all, overrides: {model: cov_lr}, note: "covariates-only control (DEMO + UTIL): what the bridge summaries add"}
 
   # ---- main comparison (family gnn) ----
   - {id: G-gcn,  family: gnn, base: gnn, targets: all, overrides: {arch: gcn},  note: "GCN, full features, layer U"}
@@ -59,6 +60,7 @@ experiments:
   - {id: D1-rewire3, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire3}}
   - {id: D1-rewire4, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: rewire4}}
   - {id: D1-shuffle, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: shuffle}, note: "edge-shuffled graph"}
+  - {id: D1-empty, family: D, base: gnn, targets: primary, overrides: {layer: N, null-graph: empty}, note: "no edges at all: node features, pooling and covariates without message passing (edgeless control)"}
   # D2 (row-wise shuffled node features) is optional in the design; add a --shuffle-features flag to step 06 before enabling it here
 
   # ---- E: model ----

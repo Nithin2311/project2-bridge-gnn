@@ -82,3 +82,22 @@ def test_macros_emit_strata_entries(tmp_path):
     assert r"\csname strat:G-sage:cancer_hematologic:sex:female:auroc\endcsname{0.572}" in out   # first seed only
     assert r"\csname strat:G-sage:cancer_hematologic:sex:male:pos\endcsname{41}" in out
     assert r"\newcommand{\strat}[5]" in out
+
+
+def test_macros_pair_uses_the_pooled_row_and_counts_seeds_excluding_zero(tmp_path):
+    a = tree(tmp_path)
+    rows = [{"run_id": "G-sage", "baseline": "B-hgb_all", "target": "mental_health", "seed": s, "n": 1375,
+             "d_auroc": d, "d_auroc_lo": lo, "d_auroc_hi": hi, "d_auprc": 0.0, "d_auprc_lo": -0.03, "d_auprc_hi": 0.03}
+            for s, d, lo, hi in [(-1, -0.0612, -0.121, -0.0015), (0, -0.068, -0.141, 0.002), (1, -0.11, -0.18, -0.04),
+                                 (2, -0.12, -0.19, -0.05), (3, -0.10, -0.17, -0.03), (4, -0.09, -0.16, -0.02)]]
+    write(a, "eval/tables/paired.csv", pl.DataFrame(rows))
+    out = report_macros.build(a, None)
+    assert r"\csname pair:G-sage:B-hgb_all:mental_health:d_auroc\endcsname{-0.061}" in out      # pooled row, not seed 0
+    assert r"\csname pair:G-sage:B-hgb_all:mental_health:n_excl\endcsname{4}" in out            # per-seed intervals excluding zero
+    assert r"\csname pair:G-sage:B-hgb_all:mental_health:n_seeds\endcsname{5}" in out
+    assert r"\csname pair:G-sage:B-hgb_all:mental_health:seed\endcsname{pooled}" in out
+
+
+def test_macros_res_includes_interval_width(tmp_path):
+    out = report_macros.build(tree(tmp_path), None)
+    assert r"\csname res:G-sage:cardiometabolic:auroc_ciw\endcsname{0.120}" in out   # hi 0.67 - lo 0.55

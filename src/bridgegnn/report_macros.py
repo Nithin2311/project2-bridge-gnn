@@ -78,14 +78,29 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             if c in r:
                 spec = "{:d}" if c in INT_COLUMNS else "{:.3f}"
                 lines.append(_csname("res", [r["run_id"], r["target"], c], _fmt(r[c], spec)))
+        for m in ("auroc", "auprc"):
+            lo, hi = r.get(f"{m}_lo"), r.get(f"{m}_hi")
+            if lo is not None and hi is not None:
+                lines.append(_csname("res", [r["run_id"], r["target"], f"{m}_ciw"], _fmt(float(hi) - float(lo), "{:.3f}")))
     paired_f = artifacts / "eval/tables/paired.csv"
     if paired_f.exists():
         paired = pl.read_csv(paired_f, infer_schema_length=None)
-        first = paired.sort("seed").group_by("run_id", "baseline", "target", maintain_order=True).first()
-        for r in first.iter_rows(named=True):
+        # the quoted interval is the seed-pooled row (seed == -1: seed-averaged predictions) when step 08 produced it,
+        # else the first seed; n_excl counts the per-seed intervals that exclude zero, n_seeds the per-seed rows
+        head = paired.sort("seed").group_by("run_id", "baseline", "target", maintain_order=True).first()
+        per_seed = paired.filter(pl.col("seed") >= 0).group_by("run_id", "baseline", "target").agg(
+            pl.len().alias("n_seeds"),
+            ((pl.col("d_auroc_lo") > 0) | (pl.col("d_auroc_hi") < 0)).sum().alias("n_excl"),
+            ((pl.col("d_auprc_lo") > 0) | (pl.col("d_auprc_hi") < 0)).sum().alias("n_excl_auprc"),
+            (pl.col("d_auroc") > 0).sum().alias("n_pos"))
+        head = head.join(per_seed, on=["run_id", "baseline", "target"], how="left")
+        for r in head.iter_rows(named=True):
+            key = [r["run_id"], r["baseline"], r["target"]]
             for c in PAIR_COLUMNS:
-                lines.append(_csname("pair", [r["run_id"], r["baseline"], r["target"], c], _fmt(r[c], "{:+.3f}")))
-            lines.append(_csname("pair", [r["run_id"], r["baseline"], r["target"], "seed"], str(int(r["seed"]))))
+                lines.append(_csname("pair", [*key, c], _fmt(r[c], "{:+.3f}")))
+            lines.append(_csname("pair", [*key, "seed"], "pooled" if int(r["seed"]) < 0 else str(int(r["seed"]))))
+            for c in ("n_seeds", "n_excl", "n_excl_auprc", "n_pos"):
+                lines.append(_csname("pair", [*key, c], _fmt(r.get(c), "{:d}")))
     strata_f = artifacts / "eval/tables/strata.csv"
     if strata_f.exists():
         st = pl.read_csv(strata_f, infer_schema_length=None)

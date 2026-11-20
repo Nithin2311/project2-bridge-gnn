@@ -11,6 +11,7 @@ from .. import contract
 from . import metrics
 
 STRATA = ["sex", "age_band", "size_bin", "index_year"]
+POOLED_SEED = -1   # paired rows with seed == -1 compare the seed-averaged test predictions of the two runs
 
 
 def load_predictions(d: Path) -> pl.DataFrame:
@@ -103,10 +104,20 @@ def summarise(preds: pl.DataFrame, rows: pl.DataFrame, cfg: dict) -> dict[str, p
            .join(first, on=["run_id", "target"], how="left")
            .with_columns(pl.col("ci_seed").alias("auroc_ci_seed"))
            .sort("target", "run_id"))
+    test_preds = P.filter(pl.col("split") == "test")
+
+    def _test(run_id, target, s):
+        """Test predictions of one seed, or (s == -1) the seed-averaged prediction per row: one interval that uses every seed."""
+        sub = test_preds.filter((pl.col("run_id") == run_id) & (pl.col("target") == target))
+        if s != POOLED_SEED:
+            return sub.filter(pl.col("seed") == s)
+        return sub.group_by("person_id", "index_date").agg(pl.col("p").mean(), pl.col("y").first())
+
     for run_id, ref in _pairings(E, set(P["run_id"].to_list())):
-        for target, s in sorted({(t, s) for r, t, s in keys if r == run_id}):
-            a = P.filter((pl.col("run_id") == run_id) & (pl.col("target") == target) & (pl.col("seed") == s) & (pl.col("split") == "test"))
-            b = P.filter((pl.col("run_id") == ref) & (pl.col("target") == target) & (pl.col("seed") == s) & (pl.col("split") == "test"))
+        seeds_here = sorted({(t, s) for r, t, s in keys if r == run_id})
+        targets_here = sorted({t for t, _ in seeds_here})
+        for target, s in [(t, POOLED_SEED) for t in targets_here] + seeds_here:
+            a, b = _test(run_id, target, s), _test(ref, target, s)
             if a.height == 0 or b.height == 0:
                 continue
             m = a.join(b.select("person_id", "index_date", pl.col("p").alias("p_b"), pl.col("y").alias("y_b")), on=["person_id", "index_date"], how="inner")

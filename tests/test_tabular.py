@@ -105,3 +105,11 @@ def test_hgb_grid_tunes_boosting_rounds():
     from bridgegnn import tabular
     iters = {g["max_iter"] for g in tabular.grid("hgb")}
     assert len(iters) >= 3 and 300 in iters and min(iters) <= 50
+
+
+def test_cov_lr_uses_demographics_and_utilisation_only():
+    cols = ["c_X99", "all_Z00", "demo_age", "demo_female", "util_n_rows", "bridge_n", "pool_x", "temp_y"]
+    assert tabular.feature_columns("cov_lr", cols) == ["demo_age", "demo_female", "util_n_rows"]
+    assert tabular.grid("cov_lr") == tabular.grid("bridge_lr")
+    assert tabular.seed_invariant("cov_lr", 1000)
+    assert "cov_lr" in tabular.MODELS
