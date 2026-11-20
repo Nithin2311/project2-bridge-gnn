@@ -103,6 +103,17 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
             lines.append(_csname("pair", [*key, "seed"], "pooled" if int(r["seed"]) < 0 else str(int(r["seed"]))))
             for c in ("n_seeds", "n_excl", "n_excl_auprc", "n_posdelta"):
                 lines.append(_csname("pair", [*key, c], _fmt(r.get(c), "{:d}")))
+    runs_f = artifacts / "eval/tables/runs.csv"
+    if runs_f.exists():
+        rr = pl.read_csv(runs_f, infer_schema_length=None)
+        first = rr.sort("seed").group_by("run_id", "target", maintain_order=True).first()
+        for r in first.iter_rows(named=True):
+            for c in ("tp", "fp", "fn", "tn"):
+                if c in r:
+                    lines.append(_csname("res", [r["run_id"], r["target"], c], _fmt(r[c], "{:d}")))
+            for c in ("threshold", "precision", "recall", "f1"):
+                if c in r:
+                    lines.append(_csname("res", [r["run_id"], r["target"], f"{c}0"], _fmt(r[c], "{:.3f}")))
     for res_f in (artifacts / "results/gnn.csv", artifacts / "results/baselines.csv"):
         if res_f.exists():
             rr = pl.read_csv(res_f, infer_schema_length=None)

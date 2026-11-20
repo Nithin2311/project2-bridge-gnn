@@ -118,3 +118,13 @@ def test_macros_sex_gap_and_dev_oof_lookups(tmp_path):
     assert r"\newcommand{\sexgap}[3]" in out
     assert r"\csname res:G-sage:cardiometabolic:dev_oof_auprc\endcsname{0.270}" in out
     assert r"\csname res:B-lr:cardiometabolic:dev_oof_auprc\endcsname{0.170}" in out
+
+
+def test_macros_confusion_counts_from_first_seed(tmp_path):
+    a = tree(tmp_path)
+    write(a, "eval/tables/runs.csv", pl.DataFrame({"run_id": ["G-sage", "G-sage"], "target": ["cancer_hematologic"] * 2, "seed": [1, 0],
+                                                   "tp": [40, 42], "fp": [700, 650], "fn": [51, 49], "tn": [961, 1011], "threshold": [0.1, 0.09],
+                                                   "precision": [0.05, 0.06], "recall": [0.44, 0.46], "f1": [0.09, 0.1]}))
+    out = report_macros.build(a, None)
+    assert r"\csname res:G-sage:cancer_hematologic:tp\endcsname{42}" in out and r"\csname res:G-sage:cancer_hematologic:tn\endcsname{1011}" in out
+    assert r"\csname res:G-sage:cancer_hematologic:recall0\endcsname{0.460}" in out
