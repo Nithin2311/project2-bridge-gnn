@@ -170,6 +170,49 @@ def main() -> None:
           "message-passing edges add no measurable discrimination beyond the node features." if inside else
           " These contrasts are descriptive because the experiment used five rewired graphs."))
 
+    # supplement: calibration and thresholded metrics per model and target (Brier skill against the prevalence comparator)
+    def skill(run, t):
+        ref = stat("B-prevalence", t, "brier_mean")
+        return 1.0 - stat(run, t, "brier_mean") / ref if ref else float("nan")
+    metric_rows = []
+    for run, name in {**BASELINES, **graph_models}.items():
+        cells = []
+        for t in TARGETS:
+            slope = "n/a" if run == "B-prevalence" else f"{stat(run, t, 'slope_mean'):.2f}"
+            f1 = stats[(run, t)]["f1_mean"]
+            cells.append(f"{stat(run, t, 'brier_mean'):.3f} & {100 * skill(run, t):+.1f}\\% & {slope} & {stat(run, t, 'citl_mean'):+.2f} & "
+                         + ("n/a" if f1 is None else f"{f1:.2f}"))
+        metric_rows.append(tex_row(label(run, name), cells))
+    write("metrics-rows", "\n".join(metric_rows))
+
+    # supplement: headline paired differences, seed-pooled interval and the number of per-seed intervals excluding zero
+    if args.paired.exists():
+        pr = pl.read_csv(args.paired)
+        pooled = pr.filter(pl.col("seed") == -1)
+        per = pr.filter(pl.col("seed") >= 0).group_by("run_id", "baseline", "target").agg(
+            pl.len().alias("n_seeds"), ((pl.col("d_auroc_lo") > 0) | (pl.col("d_auroc_hi") < 0)).sum().alias("n_excl"))
+        pooled = pooled.join(per, on=["run_id", "baseline", "target"], how="left")
+        names = {**BASELINES, **GNNS, **HETERO, "D1-shuffle": "Edge shuffle", "D1-rewire0": "Rewiring 0", "D1-empty": "No edges",
+                 "A1a": "No BRIDGE features", "A1b": "No BRIDGE, codes masked", "B1": "Directed layer", "B5-U": "Layer U (rows from 2020)",
+                 "B5-P": "Pre-2020 graph", "BT-U": "Backtest, Layer U", "BT-P": "Backtest, pre-2020 graph"}
+        order = [("G-sage", "B-bridge_lr"), ("G-sage", "B-hgb"), ("G-sage", "B-hgb_all"), ("G-sage", "B-mlp_pool"), ("G-sage", "B-cov_lr"),
+                 ("G-gcn", "B-bridge_lr"), ("G-gat", "B-bridge_lr"), ("B2", "G-sage"), ("B2", "B-bridge_lr"),
+                 ("A1a", "G-sage"), ("A1b", "G-sage"), ("B1", "G-sage"), ("D1-shuffle", "G-sage"), ("D1-rewire0", "G-sage"), ("D1-empty", "G-sage"),
+                 ("B-bridge_lr", "B-cov_lr"), ("B-bridge_lr", "B-hgb_all"), ("B5-P", "B5-U"), ("BT-P", "BT-U")]
+        prow = []
+        for run, ref in order:
+            cells = []
+            for t in TARGETS:
+                r = pooled.filter((pl.col("run_id") == run) & (pl.col("baseline") == ref) & (pl.col("target") == t))
+                if r.height == 0:
+                    cells.append("-- & --")
+                    continue
+                r = r.row(0, named=True)
+                cells.append(f"{r['d_auroc']:+.3f} [{r['d_auroc_lo']:+.3f}, {r['d_auroc_hi']:+.3f}] & {int(r['n_excl'] or 0)}/{int(r['n_seeds'] or 0)}")
+            if any(c != "-- & --" for c in cells):
+                prow.append(tex_row(f"{names.get(run, run)} $-$ {names.get(ref, ref)}", cells))
+        write("paired-seeds-rows", "\n".join(prow))
+
     configs = []
     for run, name in BASELINES.items():
         for t, short in TARGETS.items():

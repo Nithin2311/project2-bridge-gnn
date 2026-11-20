@@ -62,24 +62,37 @@ nothing here writes to it. DuckDB runs in memory with views over the CSVs; no ca
 
 ## Reproduce from scratch
 
-Everything in `outputs/artifacts/` comes from one command on a fresh clone. Project 1 must sit at
-`../project1-bridge-dx` with its frozen `outputs/` (run of 2026-10-23); the EHRShot CSVs live wherever `EHRSHOT_DATA`
-points (default `../FinalProject/data`).
+Everything in `outputs/artifacts/` comes from one command on a fresh clone.
+
+Prerequisites:
+
+- **EHRShot** (Stanford; access under its data-use agreement, non-commercial, no re-identification, no redistribution):
+  the 13 CSVs in one folder, pointed to by `EHRSHOT_DATA` (default `../FinalProject/data`).
+- **Project 1** at `../project1-bridge-dx`, commit `b851488`, with its `outputs/` produced by that repo's pipeline
+  (`uv run python run_all.py`, run of 2026-10-23). This repo imports it as a path dependency and reads, read-only:
+  `graph_main.graphml`, `patient_split.csv`, `patient_category.parquet`, `target_definitions.csv`, `bridges.csv`,
+  `nodes.csv`, `graph_nodes.csv`, `p2/node_features.csv`, `p2/p2_labels.parquet`, `p2/graph_backbone_topk.graphml`
+  and the Fisher pair table. Several of these are patient-level and are never committed anywhere.
+- `uv` (0.11 or later) and a C toolchain for the pinned wheels; about 10 GB of disk for outputs.
+
+`run_all.sh` fills `outputs/artifacts/` in place (the `collect` label empties and rewrites the collected subfolders), so
+copy the committed reference tree out first if you want to compare against it afterwards.
 
 ```bash
 git clone https://github.com/Nithin2311/project2-bridge-gnn.git && cd project2-bridge-gnn
 uv sync --extra dev --extra gnn
 export EHRSHOT_DATA="/path/to/FinalProject/data"
+cp -r outputs/artifacts ../reference-artifacts   # keep the committed tree for the comparison below
 ./scripts/run_all.sh --check            # tests, dry run of the grid, input check (~2 min)
-./scripts/run_all.sh                    # ~9 h on an M4: grid ~6 h, baselines ~1.5 h, evaluation < 15 min
-uv run python scripts/compare_runs.py /path/to/reference/outputs/artifacts outputs/artifacts --md REPRODUCTION.md
+./scripts/run_all.sh                    # ~8 h on an M4 (measured 7 h 54 min): grid 5.8 h, baselines 32 min, evaluation 23 min
+uv run python scripts/compare_runs.py ../reference-artifacts outputs/artifacts --exclude-runs C1- --md REPRODUCTION.md
 ```
 
 `run_all.sh` runs the labels `00 01 02 03 04 10 05 06 07 09 08 08b collect macros` in order (05 = all tabular baselines through
 the step 07 driver, 06 = the main GNN comparison, 07 = the remaining grid, 08b = the report fragments), appends
 timestamped START/END lines per label to `outputs/logs/run_all.log`, stops at the first failure and resumes with
-`--from <label>`. Approximate runtimes on an M4 (CPU): 00 2 min, 01 4 min, 02 1 min, 03 10 s, 04 3 min, 05 1.5 h,
-06 15 min, 07 6 h, 09 11 min, 08 < 15 min.
+`--from <label>`. Measured runtimes on an M4 (CPU, fresh clone of 2026-11-19): 00 105 s, 01 117 s, 02 2 s, 03 10 s,
+04 8 min, 10 < 1 min, 05 32 min, 06 24 min, 07 5 h 48 min, 09 35 min, 08 23 min, 08b/collect/macros seconds.
 
 `collect_artifacts.py` copies the aggregate set (`bridgegnn.artifacts.PATTERNS`: results, evaluation tables and
 figures, layers, motifs, pre-2020 summary, node feature matrices) into `outputs/artifacts/`; it refuses parquet and

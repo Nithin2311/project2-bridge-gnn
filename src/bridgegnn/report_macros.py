@@ -23,6 +23,7 @@ LAYER_SCALARS = {
     "nNodesU": ("U", "n_nodes", "{:d}"), "nEdgesU": ("U", "n_edges", "{:d}"), "nIsolatesU": ("U", "n_isolates", "{:d}"),
     "nEdgesD": ("D", "n_edges", "{:d}"), "nIsolatesD": ("D", "n_isolates", "{:d}"),
     "nEdgesBH": ("U-bh", "n_edges", "{:d}"), "nEdgesBB": ("U-bb", "n_edges", "{:d}"),
+    "densityU": ("U", "density", "{:.3f}"), "meanDegU": ("U", "mean_degree", "{:.1f}"), "densityD": ("D", "density", "{:.4f}"),
 }
 MOTIF_SCALARS = {"motifZ": ("z", "{:.2f}"), "motifZu": ("z_u", "{:.2f}"), "motifPu": ("p_emp_u", "{:.2f}"), "motifP": ("p_emp", "{:.2f}")}
 PRE_SCALARS = {"nEdgesPre": ("n_edges_new", "{:d}"), "preJaccard": ("edge_jaccard", "{:.2f}"), "nDevPre": ("n_dev_patients", "{:d}")}
@@ -145,6 +146,22 @@ def build(artifacts: Path, rows_summary: dict | None) -> str:
                 scalars[name] = _fmt(pre[col][0], spec)
         if "empty_cores" in pre.columns:
             scalars["preEmptyCores"] = tex_escape(str(pre["empty_cores"][0] or "none"))
+    short = {"cardiometabolic": "CM", "cancer_hematologic": "Heme", "mental_health": "MH", "cancer_metastatic": "Meta"}
+    sizes_f = artifacts / "cohort/subgraph_sizes.csv"
+    if sizes_f.exists():
+        for r in pl.read_csv(sizes_f, infer_schema_length=None).iter_rows(named=True):
+            k = short.get(r["target"], r["target"])
+            scalars[f"medianNodes{k}"] = _fmt(r["median_nodes"], "{:d}")
+            scalars[f"qOneNodes{k}"] = _fmt(r["q1_nodes"], "{:d}")
+            scalars[f"qThreeNodes{k}"] = _fmt(r["q3_nodes"], "{:d}")
+    coh_f = artifacts / "cohort/cohort.csv"
+    if coh_f.exists():
+        for r in pl.read_csv(coh_f, infer_schema_length=None).iter_rows(named=True):
+            k = short.get(r["target"], r["target"])
+            scalars[f"testFemalePct{k}"] = _fmt(100 * r["test_female_share"], "{:d}")
+            scalars[f"testOldPct{k}"] = _fmt(100 * r["test_age65_share"], "{:d}")
+            scalars[f"nDevPatients{k}"] = _fmt(r["n_patients_dev"], "{:d}")
+            scalars[f"nTestPatients{k}"] = _fmt(r["n_patients_test"], "{:d}")
     gnn_f = artifacts / "results/gnn.csv"
     if gnn_f.exists():
         g = pl.read_csv(gnn_f, infer_schema_length=None)
